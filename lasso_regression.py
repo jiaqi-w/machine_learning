@@ -1,4 +1,5 @@
-import csv, argparse, os
+import csv, argparse, os, re
+from os.path import basename
 import pandas as pd
 
 from sklearn import linear_model
@@ -16,22 +17,24 @@ __date__ = "Sept 14 2018"
 
 class Lasso_Regression():
     
-    def __init__(self, dump_model_dir, train_file=None, model_name="gen", test_size=None, normalize=False, is_bool_value=False, is_percentage=False, logger=None):
+    def __init__(self, dump_model_dir, train_file=None, model_name="gen", test_size=None, cv=10, normalize=False, is_bool_value=False, is_percentage=False, logger=None):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="linear_regression")
         self.classifier_name = "linear_regression"
         if not os.path.exists(dump_model_dir):
             os.makedirs(dump_model_dir)
         if test_size == None:
-            general_model_name = "lassocv10_regression"
+            general_model_name = "lassocv{}_regression".format(cv)
         else:
             general_model_name = "lasso_regression_split{}".format(test_size)
         self.dump_model_fname = os.path.join(dump_model_dir, "{}_{}_model.pickle".format(model_name, general_model_name))
         self.dump_standard_scaler_fname = os.path.join(dump_model_dir, "{}_{}_standard_scaler.pickle".format(model_name, general_model_name))
+        if model_name is None and train_file is not None:
+            model_name = re.sub(r"\.\w+$", "", basename(train_file))
         self.model_name = "{}_{}".format(model_name, general_model_name)
-        self.out_coef_fname = os.path.join(config.ML_OUTPUT_DIR, "{}_{}_coeficient.csv".format(model_name, general_model_name))
+        self.out_coef_fname = os.path.join(config.ML_OUTPUT_DIR, "{}_coeficient.csv".format(self.model_name))
         self.model = None
         self.standard_scaler = None
-        self.load_model(train_file, test_size, normalize, is_bool_value, is_percentage)
+        self.load_model(train_file, test_size, cv, normalize, is_bool_value, is_percentage)
 
 
     def read_X_list_label_list(self, filename, label_colname="conv_rate", is_bool_value=False, is_percentage=False):
@@ -73,7 +76,7 @@ class Lasso_Regression():
         X_list, label_list, feature_names = self.read_X_list_label_list(in_fname, is_bool_value=is_bool_value, is_percentage=is_percentage)
         return self.fit_transform_features_array_label_array(X_list, label_list, feature_names, normalize)
 
-    def train_model_cv(self, train_file, normalize, is_bool_value, is_percentage, save_model=False):
+    def train_model_cv(self, train_file, normalize, is_bool_value, is_percentage, cv=10, save_model=False):
         # training
         self.logger.info("Training Model")
         features_array, label_array, feature_names = self.get_features_array_label_array_from_file(train_file,
@@ -83,7 +86,7 @@ class Lasso_Regression():
         # TODO: you can change the model here. Now we are using 10-cross valication for the model.
         # self.model = LinearRegression(copy_X=True, fit_intercept=True, n_jobs=1, normalize=False)
         # self.model = linear_model.Lasso(alpha = 0.1)
-        self.model = linear_model.LassoCV(cv=10, normalize=False, verbose=True, max_iter=10000)
+        self.model = linear_model.LassoCV(cv=cv, normalize=False, verbose=True, max_iter=10000)
         print("Model Settings:", self.model)
         self.model.fit(features_array, label_array)
 
@@ -171,7 +174,7 @@ class Lasso_Regression():
             print("alpha_ = {}".format(self.model.alpha_))
             print("mse_mean = {}".format(self.model.mse_path_.mean()))
 
-    def load_model(self, train_file, test_size, normalize, is_bool_value, is_percentage):
+    def load_model(self, train_file, test_size, cv, normalize, is_bool_value, is_percentage):
         # Load the file is not already done so. If there is no pickle created, train one for it.
         self.logger.info("Load Model")
         if self.model is None:
@@ -181,29 +184,32 @@ class Lasso_Regression():
         if self.model is None:
             if test_size is None:
                 # Cross validation
-                self.train_model_cv(train_file, normalize, is_bool_value, is_percentage)
+                self.train_model_cv(train_file, normalize, is_bool_value, is_percentage, cv)
             else:
                 # Otherwise
                 self.train_model(train_file, normalize, is_bool_value, is_percentage)
 
 
 if __name__ == "__main__":
-    # python3 lasso_regression.py -in data/lasso_data/test.csv -split 0.1
+    # python3 lasso_regression.py -in data/lasso_data/toy_example.csv -split 0.1
+    # python3 lasso_regression.py -in data/lasso_data/toy_example.csv -cv 10
     parser = argparse.ArgumentParser()
     parser.add_argument("-in", "--in_fname", help="train/testing file", type=str, required=True,
-                        default=os.path.join(config.DATA, "lasso_data", "test.csv"))
+                        default=os.path.join(config.DATA, "lasso_data", "toy_example.csv"))
     parser.add_argument("-split", "--test_size", help="The split rate of training and testing set", type=float, required=False, default=None)
+    parser.add_argument("-cv", "--cv", help="The number of cross validation", type=int, default=10)
     parser.add_argument("--normalize", help="normalize the scale of the feature", action="store_true")
     parser.add_argument("--bool", help="convert the feature value to bool value", action="store_true")
     parser.add_argument("--is_percentage", help="normalize the feature value to percentage for each row", action="store_true")
 
     parser.add_argument("-dump", "--dump_dir", help="dump the model to the directory", type=str, default=config.LINEAR_REGRESSION_ML_PICKLES_DIR)
-    parser.add_argument("-name", "--model_name", help="save the model with name", type=str, default="test")
+    parser.add_argument("-name", "--model_name", help="save the model with name", type=str, default=None)
     args = parser.parse_args()
 
     # parameters
     in_fname = args.in_fname
     test_size = args.test_size
+    cv = args.cv
     normalize = args.normalize
     is_bool_value = args.bool
     is_percentage = args.is_percentage
@@ -215,6 +221,7 @@ if __name__ == "__main__":
     classifier = Lasso_Regression(dump_model_dir=dump_dir,
                                   train_file=in_fname,
                                   test_size=test_size,
+                                  cv=cv,
                                   normalize=normalize,
                                   is_bool_value=is_bool_value,
                                   is_percentage=is_percentage,
