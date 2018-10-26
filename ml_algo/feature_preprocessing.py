@@ -8,6 +8,7 @@ from scipy import sparse
 import argparse, os, re
 from os.path import basename
 import pandas as pd
+from collections import Counter
 
 import config
 from utils.file_logger import File_Logger_Helper
@@ -238,7 +239,8 @@ class Preprocessing():
                  normalize_text=True,
                  bag_of_word=False,
                  counter_ngram:int=None,
-                 embedding=False, sentence_size_percentage:float=1, min_word_freq=1):
+                 embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
+                 show_plot=False):
         # The simplest way to do it is to execute by columns.
         feature_coomatrix_columns = []
         for col_name in X.columns.values.tolist():
@@ -261,6 +263,7 @@ class Preprocessing():
             # TODO: try whether X.ravel() vs. X
             elif bag_of_word is True:
                 if self.dictionary is None:
+                    # Some times we might want to keep the stop word.
                     self.dictionary = TfidfVectorizer(stop_words='english')
                 self.logger.info("Model: {}".format(self.dictionary))
                 # For a single column.
@@ -271,23 +274,33 @@ class Preprocessing():
 
             elif counter_ngram is not None:
                 if self.counter_vector is None:
-                    # self.counter_vector = CountVectorizer(ngram_range=(1, max(1, counter_ngram)))
-                    self.counter_vector = CountVectorizer()
+                    # Some times we might want to keep the stop word.
+                    self.counter_vector = CountVectorizer(ngram_range=(1, max(1, counter_ngram)), stop_words='english')
                 self.logger.info("Model: {}".format(self.counter_vector))
                 # For a single column.
                 X_values = self.counter_vector.fit_transform(X_col)
 
-                # feature_distribution = pd.DataFrame(self.counter_vector.fit_transform(X).todense(),
-                #              columns=self.counter_vector.get_feature_names())
-                # print(feature_distribution)
+                freq_distribution = Counter(dict(zip(self.counter_vector.get_feature_names(), X_values.sum(axis=0).A1)))
+                self.logger.info("The most frequent words: {}".format(freq_distribution.most_common(50)))
                 self.logger.info("Shape of matrix '{}' is {}".format(col_name, X_values.shape))
                 # self.logger.info("matrix {}".format(X_values))
                 self.logger.info("The feature size is {}".format(len(self.counter_vector.vocabulary_)))
 
+                if show_plot is True:
+                    count_vect_df = pd.DataFrame(X_values.todense(), columns=self.counter_vector.get_feature_names())
+                    # X.sum(axis=0).A1
+                    frequency_count = count_vect_df.sum().reset_index(name="sum").groupby("sum").size().reset_index(name='count')
+                    plt.figure()
+                    frequency_count.plot(x='sum', y='count')
+                    plt.xlabel('word frequency for {}'.format(col_name))
+                    plt.ylabel('count')
+                    plt.title('Word Frequency Distribution')
+                    plt.show()
+
             elif embedding is True:
                 # Setup vocabulary processor
 
-                sentence_size = self.get_text_length_for_embedding(X_col, sentence_size_percentage)
+                sentence_size = self.get_text_length_for_embedding(X_col, sentence_size_percentage, show_plot=show_plot)
 
                 if self.vocab_processor is None:
                     self.vocab_processor = learn.preprocessing.VocabularyProcessor(sentence_size, min_frequency=min_word_freq)
@@ -395,4 +408,3 @@ class Preprocessing():
     def split_train_test(self, X, y, test_size=0.1):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         return X_train, X_test, y_train, y_test
-
