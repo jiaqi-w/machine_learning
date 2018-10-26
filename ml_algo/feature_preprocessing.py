@@ -143,10 +143,10 @@ class Preprocessing():
         # y = df[[label_colname]]
         y = df[label_colname]
 
-        # Get the header of the features.
-        feature_names = X.columns.values.tolist()
+        # # Get the header of the features.
+        # feature_names = X.columns.values.tolist()
 
-        return X, y, feature_names
+        return X, y
 
     def get_text_length_for_embedding(self, X_col, text_length_percentage:float=1, show_plot=False):
         # TODO: We might want to have varying sentence lenghth in the future.
@@ -243,6 +243,7 @@ class Preprocessing():
                  show_plot=False):
         # The simplest way to do it is to execute by columns.
         feature_coomatrix_columns = []
+        feature_names = []
         for col_name in X.columns.values.tolist():
             self.logger.info("Preprocess column '{}'".format(col_name))
 
@@ -250,6 +251,7 @@ class Preprocessing():
                                       convert_bool=convert_bool,
                                       convert_row_percentage=convert_row_percentage,
                                       normalize_text=normalize_text)
+            feature_name = col_name
 
             if standardize is True:
                 # z-score normalize the scale of the feature
@@ -271,6 +273,7 @@ class Preprocessing():
                 self.logger.info("Shape of matrix '{}' is {}".format(col_name, X_values.shape))
                 # self.logger.info("matrix {}".format(X_values))
                 self.logger.info("The vocabulary size is {}".format(len(self.dictionary.vocabulary_)))
+                feature_name = ["{}_{}".format(col_name, fn) for fn in list(self.dictionary.vocabulary_.keys())]
 
             elif counter_ngram is not None:
                 if self.counter_vector is None:
@@ -285,6 +288,7 @@ class Preprocessing():
                 self.logger.info("Shape of matrix '{}' is {}".format(col_name, X_values.shape))
                 # self.logger.info("matrix {}".format(X_values))
                 self.logger.info("The feature size is {}".format(len(self.counter_vector.vocabulary_)))
+                feature_name = ["{}_{}".format(col_name, fn) for fn in list(self.counter_vector.vocabulary_.keys())]
 
                 if show_plot is True:
                     count_vect_df = pd.DataFrame(X_values.todense(), columns=self.counter_vector.get_feature_names())
@@ -314,10 +318,18 @@ class Preprocessing():
                 embedding_size = len(self.vocab_processor.vocabulary_)
                 self.logger.info("The embedding size is {}".format(embedding_size))
 
+                vocab_dict = self.vocab_processor.vocabulary_._mapping
+                feature_name = ["{}_{}".format(col_name, fn) for fn in list(vocab_dict.keys())]
+
             else:
                 X_values = X.values
 
             feature_coomatrix_columns.append(sparse.coo_matrix(X_values))
+            if isinstance(feature_name, list):
+                # Noted: There might be same feature names for different feature
+                feature_names += feature_name
+            else:
+                feature_names.append(feature_name)
 
         if is_sparse is True:
             # horizontal append. Return a sparse matrix.
@@ -327,7 +339,8 @@ class Preprocessing():
             # horizontal append. Return a dense matrix.
             feature_matrix = np.hstack(feature_coomatrix_columns)
             self.logger.info("Shape of all feature matrix is {}".format(feature_matrix.shape))
-        return feature_matrix
+        self.logger.info("feature_names = {}".format(feature_names))
+        return feature_matrix, feature_names
 
     def preprocess_y(self, label_list):
         # customize preprocessing for label. Inherit this method to do the converstion.
@@ -383,11 +396,11 @@ class Preprocessing():
             embedding=embedding, sentence_size_percentage=sentence_size_percentage,
             min_word_freq=min_word_freq)
 
-        X, y, feature_names = self.get_X_y_featurenames_from_file(in_fname,
+        X, y = self.get_X_y_featurenames_from_file(in_fname,
                                                                   drop_colnames=drop_colnames,
                                                                   label_colname=label_colname)
 
-        X = self.encode_X(X,
+        X, feature_names = self.encode_X(X,
                           is_sparse=is_sparse,
                           standardize=standardize,
                           convert_bool=convert_bool,
