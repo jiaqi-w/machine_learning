@@ -11,4 +11,5 @@ PICKLE_DIR = os.path.join(RESOURCES, "pickles")
 ML_OUTPUT_DIR = os.path.join(DATA, "lasso_data")
 ML_PICKLES_DIR = os.path.join(PICKLE_DIR, "ml_models")
 LINEAR_REGRESSION_ML_PICKLES_DIR = os.path.join(PICKLE_DIR, "ml_models", "linear_regression")
+PREROCESS_PICKLES_DIR = os.path.join(PICKLE_DIR, "preprocess")
 
