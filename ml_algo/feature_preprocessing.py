@@ -5,7 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from scipy import stats
 from scipy import sparse
-import argparse, os, re
+import os, re
 from os.path import basename
 import pandas as pd
 from collections import Counter
@@ -17,6 +17,9 @@ import string
 import numpy as np
 import math
 from tensorflow.contrib import learn
+from sklearn.pipeline import Pipeline
+from nltk.stem import SnowballStemmer
+from nltk import word_tokenize
 
 import matplotlib.pyplot as plt
 
@@ -25,11 +28,14 @@ __version__ = "1"
 __date__ = "Oct 24 2018"
 
 
-class Preprocessing():
+class Feature_Preprocessing():
 
     def __init__(self, logger=None):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="preprocessing")
 
+        self.stemmer = SnowballStemmer('english')
+
+        # Fixme: we should use dictionary to save the features to vector
         self.standard_scaler = None
         self.dictionary = None
         self.counter_vector = None
@@ -44,9 +50,11 @@ class Preprocessing():
                             convert_bool=False,
                             convert_row_percentage=False,
                             normalize_text=True,
+                            use_stem=False,
                             bag_of_word=False,
-                            counter_ngram: int = None,
-                            embedding=False, sentence_size_percentage: float = 1, min_word_freq=1):
+                            max_token_number:int=None,
+                            counter_ngram:int=None,
+                            embedding=False, sentence_size_percentage:float=1, min_word_freq=1):
 
         model_name = "preprocess"
         if in_fname is not None:
@@ -62,8 +70,12 @@ class Preprocessing():
             model_name = model_name + "_rpct"
         if normalize_text:
             model_name = model_name + "_ntext"
+        if use_stem:
+            model_name = model_name + "_stem"
         if bag_of_word:
             model_name = model_name + "_bow"
+        if max_token_number:
+            model_name = model_name + "_tfidf{}".format(max_token_number)
         if counter_ngram is not None:
             model_name = model_name + "_n{}".format(counter_ngram)
         if embedding:
@@ -84,9 +96,11 @@ class Preprocessing():
                              convert_bool=False,
                              convert_row_percentage=False,
                              normalize_text=True,
+                             use_stem=False,
                              bag_of_word=False,
-                             counter_ngram: int = None,
-                             embedding=False, sentence_size_percentage: float = 1, min_word_freq=1,
+                             max_token_number:int=None,
+                             counter_ngram:int=None,
+                             embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
                              dump_model_dir=config.PREROCESS_PICKLES_DIR):
         # Load the file is not already done so. If there is no pickle created, train one for it.
         self.logger.info("Load Model")
@@ -101,7 +115,9 @@ class Preprocessing():
                                  convert_bool=convert_bool,
                                  convert_row_percentage=convert_row_percentage,
                                  normalize_text=normalize_text,
+                                 use_stem=use_stem,
                                  bag_of_word=bag_of_word,
+                                 max_token_number=max_token_number,
                                  counter_ngram=counter_ngram,
                                  embedding=embedding, sentence_size_percentage=sentence_size_percentage,
                                  min_word_freq=min_word_freq)
@@ -131,6 +147,7 @@ class Preprocessing():
             Pickle_Helper.save_model_to_pickle(self.vocab_processor, self.dump_vocab_processor_fname)
 
     def get_X_y_featurenames_from_file(self, filename, drop_colnames:list=None, label_colname="label"):
+        # TODO: Add Data_Preprocessing for data filtering.
         self.logger.info("Read file {}".format(filename))
         df = pd.read_csv(filename)
         if drop_colnames is not None:
@@ -183,16 +200,18 @@ class Preprocessing():
             plt.show()
         return x
 
-    def normalize_text_row(self, text_row):
+    def normalize_text_row(self, text_row, use_stem):
         norm_text_row = []
         for text in text_row:
-            norm_text_row.append(self.normalize_text(text))
+            norm_text_row.append(self.normalize_text(text, use_stem=use_stem))
         return norm_text_row
 
-    def normalize_text(self, text):
+    def normalize_text(self, text, use_stem):
         norm_text = None
         if text is not None:
             text = text.lower()
+            if use_stem:
+                text = self.stemmer.stem(text)
             norm_text = ""
             # Remove punctuation and numbers
             for char in text:
@@ -203,7 +222,7 @@ class Preprocessing():
             norm_text = re.sub(r"\s+", " ", norm_text).strip()
         return norm_text
 
-    def preprocess_X(self, X, convert_bool=False, convert_row_percentage=False, normalize_text=False):
+    def preprocess_X(self, X, convert_bool=False, convert_row_percentage=False, normalize_text=False, use_stem=False):
         # customize preprocessing for features. Inherit this method to do the converstion.
         if convert_bool:
             # Convert the feature value to bool value.
@@ -225,7 +244,7 @@ class Preprocessing():
 
             # For single column.
             X = X.fillna('')
-            X = X.apply(self.normalize_text)
+            X = X.apply(lambda x : self.normalize_text(x, use_stem=use_stem))
 
         # print("X", X)
 
@@ -237,20 +256,25 @@ class Preprocessing():
                  convert_bool=False,
                  convert_row_percentage=False,
                  normalize_text=True,
+                 use_stem=False,
                  bag_of_word=False,
+                 max_token_number:int=None,
                  counter_ngram:int=None,
                  embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
                  show_plot=False):
         # The simplest way to do it is to execute by columns.
         feature_coomatrix_columns = []
         feature_names = []
+        # FIXME: if embedding is used, the multicolumn might not work properlly since each column has different max length for the text.
         for col_name in X.columns.values.tolist():
             self.logger.info("Preprocess column '{}'".format(col_name))
 
             X_col = self.preprocess_X(X[col_name],
                                       convert_bool=convert_bool,
                                       convert_row_percentage=convert_row_percentage,
-                                      normalize_text=normalize_text)
+                                      normalize_text=normalize_text,
+                                      use_stem=use_stem
+                                      )
             feature_name = col_name
 
             if standardize is True:
@@ -266,7 +290,9 @@ class Preprocessing():
             elif bag_of_word is True:
                 if self.dictionary is None:
                     # Some times we might want to keep the stop word.
-                    self.dictionary = TfidfVectorizer(stop_words='english')
+                    self.dictionary = TfidfVectorizer(tokenizer=word_tokenize,
+                                                      stop_words='english',
+                                                      max_features=max_token_number)
                 self.logger.info("Model: {}".format(self.dictionary))
                 # For a single column.
                 X_values = self.dictionary.fit_transform(X_col)
@@ -278,7 +304,10 @@ class Preprocessing():
             elif counter_ngram is not None:
                 if self.counter_vector is None:
                     # Some times we might want to keep the stop word.
-                    self.counter_vector = CountVectorizer(ngram_range=(1, max(1, counter_ngram)), stop_words='english')
+                    self.counter_vector = CountVectorizer(tokenizer=word_tokenize,
+                                                          ngram_range=(1, max(1, counter_ngram)),
+                                                          stop_words='english',
+                                                          max_features=max_token_number)
                 self.logger.info("Model: {}".format(self.counter_vector))
                 # For a single column.
                 X_values = self.counter_vector.fit_transform(X_col)
@@ -316,6 +345,7 @@ class Preprocessing():
                 self.logger.info("Shape of matrix '{}' is {}".format(col_name, X_values.shape))
                 self.logger.info("matrix {}".format(X_values))
                 embedding_size = len(self.vocab_processor.vocabulary_)
+                self.logger.info("The sentence size is {}".format(sentence_size))
                 self.logger.info("The embedding size is {}".format(embedding_size))
 
                 vocab_dict = self.vocab_processor.vocabulary_._mapping
@@ -380,7 +410,9 @@ class Preprocessing():
                                     convert_bool=False,
                                     convert_row_percentage=False,
                                     normalize_text=True,
+                                    use_stem=False,
                                     bag_of_word=False,
+                                    max_token_number:int=None,
                                     counter_ngram:int=None,
                                     embedding=False, sentence_size_percentage:float=1, min_word_freq=1):
 
@@ -391,7 +423,9 @@ class Preprocessing():
             convert_bool=convert_bool,
             convert_row_percentage=convert_row_percentage,
             normalize_text=normalize_text,
+            use_stem=use_stem,
             bag_of_word=bag_of_word,
+            max_token_number=max_token_number,
             counter_ngram=counter_ngram,
             embedding=embedding, sentence_size_percentage=sentence_size_percentage,
             min_word_freq=min_word_freq)
@@ -406,7 +440,9 @@ class Preprocessing():
                           convert_bool=convert_bool,
                           convert_row_percentage=convert_row_percentage,
                           normalize_text=normalize_text,
+                          use_stem=use_stem,
                           bag_of_word=bag_of_word,
+                          max_token_number=max_token_number,
                           counter_ngram=counter_ngram,
                           embedding=embedding, sentence_size_percentage=sentence_size_percentage, min_word_freq=min_word_freq
                           )
@@ -421,3 +457,4 @@ class Preprocessing():
     def split_train_test(self, X, y, test_size=0.1):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         return X_train, X_test, y_train, y_test
+
