@@ -2,7 +2,6 @@ import os
 
 MAIN_DIR = os.path.dirname(os.path.abspath(__file__))
 
-LOGGER_DIR = os.path.join(MAIN_DIR, "logs/")
 RESOURCES = os.path.join(MAIN_DIR, "resources/")
 DATA = os.path.join(MAIN_DIR, "data/")
 LOG_DIR = os.path.join(MAIN_DIR, "logger", "logs")

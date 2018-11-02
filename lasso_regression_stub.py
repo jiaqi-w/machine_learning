@@ -96,7 +96,6 @@ class Lasso_Regression():
         # We could use the best alpha learnt from cross validation.
         self.model = linear_model.Lasso(alpha=alpha)
         print("Model Settings:", self.model)
-        self.logger.info("Training Model")
         self.model.fit(X_train, y_train)
         score = self.model.score(X_test, y_test)
         print("R score", score)
