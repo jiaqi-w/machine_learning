@@ -14,6 +14,10 @@ from sklearn.metrics import classification_report
 import numpy as np
 
 
+__author__ = "Jiaqi"
+__version__ = "1"
+__date__ = "Nov 1 2018"
+
 class CNN_Training():
 
     def __init__(self, num_words=10000, max_text_len=1600, embedding_vecor_length=300):
