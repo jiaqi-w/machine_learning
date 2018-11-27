@@ -78,6 +78,7 @@ class Annotation_Evaluation():
 
                 label_encoder.fit(list(label_set))
 
+                # TODO: change the location of the output.
                 out_file = open("annotation_confusion_matrix.csv", "w")
                 csv_writer = csv.writer(out_file)
 
@@ -170,6 +171,7 @@ class Annotation_Evaluation():
         label_set = set(y_gold.tolist() + y_pred.tolist())
         class_names = list(label_set)
 
+        # TODO: change the location of the output.
         with open("prediction_confusion_matrix.csv", "w") as out_file:
             csv_writer = csv.writer(out_file)
 

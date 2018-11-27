@@ -148,17 +148,23 @@ class Feature_Processing():
 
     def store_model(self, replace_exists=False):
         if not os.path.exists(self.dump_standard_scaler_fname) or replace_exists is True:
-            Pickle_Helper.save_model_to_pickle(self.standard_scaler, self.dump_standard_scaler_fname)
+            if self.standard_scaler is not None:
+                Pickle_Helper.save_model_to_pickle(self.standard_scaler, self.dump_standard_scaler_fname)
         if not os.path.exists(self.dump_one_hot_encode_fname) or replace_exists is True:
-            Pickle_Helper.save_model_to_pickle(self.one_hot_encoder, self.dump_one_hot_encode_fname)
+            if self.one_hot_encoder is not None:
+                Pickle_Helper.save_model_to_pickle(self.one_hot_encoder, self.dump_one_hot_encode_fname)
         if not os.path.exists(self.dump_dictionary_fname) or replace_exists is True:
-            Pickle_Helper.save_model_to_pickle(self.dictionary, self.dump_dictionary_fname)
+            if self.dictionary is not None:
+                Pickle_Helper.save_model_to_pickle(self.dictionary, self.dump_dictionary_fname)
         if not os.path.exists(self.dump_counter_vec_fname) or replace_exists is True:
-            Pickle_Helper.save_model_to_pickle(self.counter_vector, self.dump_counter_vec_fname)
+            if self.counter_vector is not None:
+                Pickle_Helper.save_model_to_pickle(self.counter_vector, self.dump_counter_vec_fname)
         if not os.path.exists(self.dump_label_encoder_fname) or replace_exists is True:
-            Pickle_Helper.save_model_to_pickle(self.label_encoder, self.dump_label_encoder_fname)
+            if self.label_encoder is not None:
+                Pickle_Helper.save_model_to_pickle(self.label_encoder, self.dump_label_encoder_fname)
         if not os.path.exists(self.dump_vocab_processor_fname) or replace_exists is True:
-            Pickle_Helper.save_model_to_pickle(self.vocab_processor, self.dump_vocab_processor_fname)
+            if self.vocab_processor is not None:
+                Pickle_Helper.save_model_to_pickle(self.vocab_processor, self.dump_vocab_processor_fname)
 
     def get_X_y_featurenames_from_file(self, filename, drop_colnames:list=None, label_colname="label"):
         # TODO: Add Data_Preprocessing for data filtering.
