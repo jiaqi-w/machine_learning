@@ -15,4 +15,4 @@ LINEAR_REGRESSION_ML_PICKLES_DIR = os.path.join(PICKLE_DIR, "ml_models", "linear
 PREROCESS_PICKLES_DIR = os.path.join(PICKLE_DIR, "preprocess")
 
 WORD_EMBEDDING_DIR = os.path.join(RESOURCES, "word_embedding")
-GLOVE_SIXB = os.path.join(WORD_EMBEDDING_DIR, "word_embedding")
+GLOVE_SIXB = os.path.join(WORD_EMBEDDING_DIR, "glove.6B")
