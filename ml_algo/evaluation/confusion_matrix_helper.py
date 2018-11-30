@@ -57,11 +57,9 @@ class Confusion_Matrix_Helper():
         plt.tight_layout()
 
     @staticmethod
-    def evaluate(y_gold, y_pred, cm_outfname, show_plot=False):
+    def evaluate(y_gold:list, y_pred:list, cm_outfname, show_plot=False):
 
-        label_encoder = LabelEncoder()
-
-        label_set = set(y_gold.tolist() + y_pred.tolist())
+        label_set = set(y_gold + y_pred)
         class_names = list(label_set)
 
         # TODO: change the location of the output.
@@ -72,10 +70,11 @@ class Confusion_Matrix_Helper():
 
             cnf_matrix = confusion_matrix(y_gold, y_pred, class_names)
             print("class_names={}".format(class_names))
-            print("The confusion matrix is {}".format(cnf_matrix))
+            print("The confusion matrix is \n {} {}".format("TP\P ", class_names))
             csv_writer.writerow(["TP\P"] + class_names)
             for i, row in enumerate(cnf_matrix):
                 csv_writer.writerow([class_names[i]] + row.tolist())
+                print(print("{}".format([class_names[i]] + row.tolist())))
                 out_file.flush()
 
             np.set_printoptions(precision=2)
@@ -91,13 +90,6 @@ class Confusion_Matrix_Helper():
                 plt.show()
 
 
-        # agreement_score = cohen_kappa_score(y_gold, y_pred)
-        # print("The 'Kappa Correlation' is {} for gold and predict".format(round(agreement_score, 2)))
-
-        # label_encoder.fit(class_names)
-        # y_gold = label_encoder.transform(y_gold)
-        # y_pred = label_encoder.transform(y_pred)
-
         precision, recall, F1, support = precision_recall_fscore_support(y_gold, y_pred, average='macro')
         print("macro", round(precision, 4), round(recall, 4), round(F1, 4), support)
         precision, recall, F1, support = precision_recall_fscore_support(y_gold, y_pred, average='micro')
@@ -105,9 +97,6 @@ class Confusion_Matrix_Helper():
         precision, recall, F1, support = precision_recall_fscore_support(y_gold, y_pred, average='weighted')
         print("weighted", round(precision, 4), round(recall, 4), round(F1, 4), support)
 
-        # target_names = label_encoder.inverse_transform(list(set(y_gold.tolist() + y_pred.tolist())))
-
-        # report = classification_report(y_gold, y_pred, target_names=target_names)
         report = classification_report(y_gold, y_pred)
         print(report)
 

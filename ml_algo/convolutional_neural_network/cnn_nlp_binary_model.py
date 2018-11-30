@@ -187,7 +187,9 @@ class CNN_NLP_Binary_Model():
             outputs = Dense(1, activation='sigmoid')(dense_regularize)
             # Please note that we are not using a sequencial model here
             # self.model = Model(inputs=[inputs], outputs=outputs)
-            self.model = Model(inputs=[input], outputs=outputs)
+            # self.model = Model(inputs=[input], outputs=outputs)
+            self.model = Sequential()
+            self.model.add(Model(inputs=[input], outputs=outputs))
             self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             self.logger.info("summarize:\n{}".format(self.model.summary()))
 
@@ -214,9 +216,9 @@ class CNN_NLP_Binary_Model():
         # scores = self.model.evaluate(X_test, y_test, verbose=0)
         # self.logger.info("Accuracy: %.2f%%" % (scores[-1] * 100))
 
-        # y_pred = self.model.predict_classes(X_test)
-        y_pred = self.model.predict(X_test)
-        y_pred = y_pred.argmax(axis=-1)
+        y_pred = self.model.predict_classes(X_test)
+        # y_pred = self.model.predict(X_test)
+        # y_pred = y_pred.argmax(axis=-1)
         print("y_pred", y_pred)
 
         # TODO: save the evaluation results in the future.
@@ -233,7 +235,7 @@ class CNN_NLP_Binary_Model():
         self.logger.info("report:\n{}".format(report))
 
         # TODO: confusion matrix.
-        cm.evaluate(y_test, y_pred, cm_outfname=cm_fname)
+        cm.evaluate(y_test.tolist(), y_pred.flatten().tolist(), cm_outfname=cm_fname)
 
         # TODO: output results.
         if predict_fname is not None:
