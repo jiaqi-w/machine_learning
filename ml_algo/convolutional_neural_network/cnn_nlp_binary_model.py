@@ -222,11 +222,21 @@ class CNN_NLP_Binary_Model():
         print("y_pred", y_pred)
 
         # TODO: save the evaluation results in the future.
+        evaluate_dict = {}
         precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='macro')
+        evaluate_dict["macro_prec"] = round(precision, 4)
+        evaluate_dict["macro_recall"] = round(recall, 4)
+        evaluate_dict["macro_f1"] = round(F1, 4)
         self.logger.info("macro precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
         precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='micro')
+        evaluate_dict["micro_prec"] = round(precision, 4)
+        evaluate_dict["micro_recall"] = round(recall, 4)
+        evaluate_dict["micro_f1"] = round(F1, 4)
         self.logger.info("micro precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
         precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='weighted')
+        evaluate_dict["weighted_prec"] = round(precision, 4)
+        evaluate_dict["weighted_recall"] = round(recall, 4)
+        evaluate_dict["weighted_f1"] = round(F1, 4)
         self.logger.info("weighted precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
 
         target_names = self.feature_preprocessing.get_target_names(y_test)
@@ -235,7 +245,7 @@ class CNN_NLP_Binary_Model():
         self.logger.info("report:\n{}".format(report))
 
         # TODO: confusion matrix.
-        cm.evaluate(y_test.tolist(), y_pred.flatten().tolist(), cm_outfname=cm_fname)
+        cm.evaluate(y_test.tolist(), y_pred.flatten().tolist(), cm_outfname="{}_cm.csv".format(self.model_name))
 
         # TODO: output results.
         if predict_fname is not None:
@@ -245,5 +255,5 @@ class CNN_NLP_Binary_Model():
                 df.to_csv(predict_file)
                 self.logger.info("Save prediction results to {}".format(predict_fname))
 
-        return y_pred
+        return evaluate_dict
 
