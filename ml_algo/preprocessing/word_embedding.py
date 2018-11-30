@@ -12,11 +12,10 @@ __author__ = "Jiaqi"
 __version__ = "1"
 __date__ = "Oct 24 2018"
 
-
 class Word_Embedding():
 
     def __init__(self, logger=None, glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt')):
-        self.logger = logger or File_Logger_Helper.get_logger(logger_fname="GloVe_Embedding")
+        self.logger = logger or File_Logger_Helper.get_logger(logger_fname="word_embedding")
         self.tokenizer = None
         self.init_dict(glove_fname=glove_fname)
 
@@ -97,6 +96,7 @@ class Word_Embedding():
                                   num_words=num_words,
                                   embedding_vector_dimension=embedding_vector_dimension,
                                   max_text_len=max_text_len)
+        self.num_words = num_words
         self.max_text_len = max_text_len
 
         if self.tokenizer is None:
@@ -107,9 +107,11 @@ class Word_Embedding():
         self.logger.info('Tokenizer:\n {}'.format(self.tokenizer))
 
         word_index = self.tokenizer.word_index
-        self.logger.info('Found {} unique tokens.'.format(len(word_index)))
+        self.logger.info('Found {} unique tokens with {} num_words'.format(len(word_index), self.num_words))
         self.logger.info("word_index={}".format(word_index))
 
+        # Reference: https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
+        self.embedding_matrix = None
         if "token_vector" in general_name:
             self.logger.info("in_dim={}, out_dim={}, text_length={}".format(num_words, embedding_vector_dimension, max_text_len))
             embedding_layer = Embedding(num_words, embedding_vector_dimension, input_length=max_text_len)
@@ -119,32 +121,33 @@ class Word_Embedding():
             if embedding_vector_dimension != self.embedding_vector_dimension:
                 self.logger.error("Error, the embedding vector dimension should be {} instead of {}".format(self.embedding_vector_dimension, embedding_vector_dimension))
                 embedding_vector_dimension = self.embedding_vector_dimension
-            embedding_matrix = np.zeros((len(word_index) + 1, embedding_vector_dimension))
+            self.embedding_matrix = np.zeros((len(word_index) + 1, embedding_vector_dimension))
             for word, i in word_index.items():
                 # Assign the pre-trained weight to the embedding vector.
                 embedding_vector = self.embeddings_index.get(word)
                 if embedding_vector is not None:
                     # words not found in embedding index will be all-zeros.
-                    embedding_matrix[i] = embedding_vector
+                    self.embedding_matrix[i] = embedding_vector
 
             self.logger.info(
                 "in_dim={}, out_dim={}, text_length={}".format(len(word_index) + 1, embedding_vector_dimension, max_text_len))
             embedding_layer = Embedding(len(word_index) + 1,
                                         embedding_vector_dimension,
-                                        weights=[embedding_matrix],
+                                        weights=[self.embedding_matrix],
                                         input_length=max_text_len,
                                         trainable=False)
 
         return embedding_layer
 
+
     def encode_X(self, X, max_text_len=None):
         if self.tokenizer is None:
-            self.logger.error("Please initial the embedding by GloVe_Embedding().init_embedding_layer first")
+            self.logger.error("Please initial the embedding by Word_Embedding().init_embedding_layer first")
             return None
 
-        self.logger.info("X=".format(X))
+        self.logger.info("X={}".format(X))
         X = self.tokenizer.texts_to_sequences(X)
-        print("sequance X {}".format(X))
+        self.logger.info("sequance X {}".format(X))
         if max_text_len == None:
             max_text_len = self.max_text_len
         X = sequence.pad_sequences(X, maxlen=max_text_len)

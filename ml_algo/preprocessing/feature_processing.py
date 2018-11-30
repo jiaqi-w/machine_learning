@@ -420,7 +420,7 @@ class Feature_Processing():
         # customize preprocessing for label. Inherit this method to do the converstion.
         return label_list
 
-    def encode_y(self, y=None):
+    def encode_y(self, y:pd.Series=None):
         # Used when the task is to classify discrete target.
         if y is None or len(y) == 0:
             return y
@@ -447,6 +447,13 @@ class Feature_Processing():
 
         self.logger.info("y={}".format(y))
         return y
+
+    def get_target_names(self, encoded_y):
+        if self.label_encoder is not None:
+            return self.label_encoder.inverse_transform(np.sort(np.unique(encoded_y)).tolist())
+        else:
+            return None
+            # return list(set(encoded_y))
 
     def preprocess_X_y_featurenames(self, in_fname,
                                     drop_colnames:list=None,
@@ -506,7 +513,7 @@ class Feature_Processing():
 
         return X, y, feature_names
 
-    def split_train_test(self, X, y, test_size=0.1):
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-        return X_train, X_test, y_train, y_test
+    # def split_train_test(self, X, y, test_size=0.1):
+    #     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+    #     return X_train, X_test, y_train, y_test
 
