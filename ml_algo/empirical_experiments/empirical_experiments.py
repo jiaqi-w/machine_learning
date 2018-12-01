@@ -9,7 +9,7 @@ __version__ = "1"
 __date__ = "Nov 31 2018"
 
 
-def run(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fname):
+def run(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fname, replace_exists):
 
     with open(evaluate_fname, 'w', newline='') as evaluate_file:
         with open(cnn_setting_fname, 'r') as setting_file:
@@ -55,7 +55,7 @@ def run(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fname):
                     feature_name=feature_name,
                     target_name=target_name,
                 )
-                training.train(X_train, y_train)
+                training.train(X_train, y_train, replace_exists=replace_exists)
                 print("y_test distribution", y_test.value_counts())
                 evaluate_dict = training.evaluate_model(X_test, y_test)
 

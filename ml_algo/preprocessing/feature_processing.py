@@ -291,7 +291,8 @@ class Feature_Processing():
                  max_token_number:int=None,
                  counter_ngram:int=None,
                  embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
-                 show_plot=False):
+                 show_plot=False,
+                 replace_exists=False):
         # The simplest way to do it is to execute by columns.
         feature_coomatrix_columns = []
         feature_names = []
@@ -311,7 +312,7 @@ class Feature_Processing():
 
             if standardize is True:
                 # z-score normalize the scale of the feature
-                if self.standard_scaler is None:
+                if self.standard_scaler is None or replace_exists:
                     with_mean = not is_sparse
                     # When the data is sparse, do it without mean so that the 0 entry will stay 0.
                     self.standard_scaler = StandardScaler(with_mean=with_mean, with_std=True)
@@ -320,7 +321,7 @@ class Feature_Processing():
 
             elif one_hot_encode is True:
                 # categorical_features could declare the columns to be one hot encoder. sparse = True/False
-                if self.one_hot_encoder is None:
+                if self.one_hot_encoder is None or replace_exists:
                     self.one_hot_encoder = OneHotEncoder(handle_unknown=False)
                 self.logger.info("Model: {}".format(self.one_hot_encoder))
                 # For a single column.
@@ -332,7 +333,7 @@ class Feature_Processing():
 
             # TODO: try whether X.ravel() vs. X
             elif bag_of_word is True:
-                if self.dictionary is None:
+                if self.dictionary is None or replace_exists:
                     # Some times we might want to keep the stop word.
                     self.dictionary = TfidfVectorizer(tokenizer=word_tokenize,
                                                       stop_words='english',
@@ -346,7 +347,7 @@ class Feature_Processing():
                 feature_name = ["{}_{}".format(col_name, fn) for fn in list(self.dictionary.vocabulary_.keys())]
 
             elif counter_ngram is not None:
-                if self.counter_vector is None:
+                if self.counter_vector is None or replace_exists:
                     # Some times we might want to keep the stop word.
                     self.counter_vector = CountVectorizer(tokenizer=word_tokenize,
                                                           ngram_range=(1, max(1, counter_ngram)),
@@ -379,7 +380,7 @@ class Feature_Processing():
 
                 sentence_size = self.get_text_length_for_embedding(X_col, sentence_size_percentage, show_plot=show_plot)
 
-                if self.vocab_processor is None:
+                if self.vocab_processor is None or replace_exists:
                     self.vocab_processor = learn.preprocessing.VocabularyProcessor(sentence_size, min_frequency=min_word_freq)
                 self.logger.info("Embedding Model: {}".format(self.vocab_processor))
 
@@ -469,7 +470,8 @@ class Feature_Processing():
                                     bag_of_word=False,
                                     max_token_number:int=None,
                                     counter_ngram:int=None,
-                                    embedding=False, sentence_size_percentage:float=1, min_word_freq=1):
+                                    embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
+                                    replace_exists=False):
 
         self.load_model_if_exists(
             in_fname=in_fname,
@@ -503,7 +505,8 @@ class Feature_Processing():
                           bag_of_word=bag_of_word,
                           max_token_number=max_token_number,
                           counter_ngram=counter_ngram,
-                          embedding=embedding, sentence_size_percentage=sentence_size_percentage, min_word_freq=min_word_freq
+                          embedding=embedding, sentence_size_percentage=sentence_size_percentage, min_word_freq=min_word_freq,
+                          replace_exists=replace_exists
                           )
 
         y = self.encode_y(y)

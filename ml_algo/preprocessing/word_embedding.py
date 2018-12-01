@@ -86,7 +86,7 @@ class Word_Embedding():
                              num_words:int,
                              embedding_vector_dimension:int,
                              max_text_len:int,
-                             general_name="glove"):
+                             general_name="glove", replace_exists=False):
         # TODO: just deal with one column
         # The simplest way to do it is to execute by columns.
         if embedding_vector_dimension is None:
@@ -99,10 +99,11 @@ class Word_Embedding():
         self.num_words = num_words
         self.max_text_len = max_text_len
 
-        if self.tokenizer is None:
+        if self.tokenizer is None or replace_exists:
             self.logger.info('New tokenizer with {} number of words.'.format(num_words))
             self.tokenizer = Tokenizer(num_words=num_words)
             self.tokenizer.fit_on_texts(X.ravel())
+            self.store_model(replace_exists=replace_exists)
             # self.tokenizer.fit_on_texts(X.values.ravel())
         self.logger.info('Tokenizer:\n {}'.format(self.tokenizer))
 

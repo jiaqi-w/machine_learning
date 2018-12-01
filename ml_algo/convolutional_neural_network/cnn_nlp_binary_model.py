@@ -145,11 +145,12 @@ class CNN_NLP_Binary_Model():
     # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
     def train(self, X_train:pd.Series, y_train:pd.Series, replace_exists=False):
         # Initial the embedding layer.
-        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train,
+        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values,
                                                                           num_words=self.num_words,
                                                                           embedding_vector_dimension=self.embedding_vector_dimension,
                                                                           max_text_len=self.max_text_len,
-                                                                          general_name=self.embedding_name
+                                                                          general_name=self.embedding_name,
+                                                                          replace_exists=replace_exists
                                                                           )
 
         # Pad the sequence to the same length
@@ -204,7 +205,7 @@ class CNN_NLP_Binary_Model():
         else:
             self.logger.info("Trained model {}".format(self.model_name))
 
-    def evaluate_model(self, X_test, y_test, predict_fname=None, cm_fname=None, evaluate_fname=None):
+    def evaluate_model(self, X_test:pd.Series, y_test:pd.Series, predict_fname=None, cm_fname=None, evaluate_fname=None):
         if self.model == None:
             self.logger.error("Please train the model first. There is no model for {}".format(self.model_name))
         self.logger.info("Evalute model {}".format(self.model_name))
@@ -219,7 +220,10 @@ class CNN_NLP_Binary_Model():
         y_pred = self.model.predict_classes(X_test)
         # y_pred = self.model.predict(X_test)
         # y_pred = y_pred.argmax(axis=-1)
-        print("y_pred", y_pred)
+        self.logger.info("y_pred {}".format(y_pred))
+
+        y_test = self.feature_preprocessing.encode_y(y_test)
+        self.logger.info("y_test {}".format(y_test))
 
         # TODO: save the evaluation results in the future.
         evaluate_dict = {}
@@ -241,7 +245,7 @@ class CNN_NLP_Binary_Model():
 
         target_names = self.feature_preprocessing.get_target_names(y_test)
 
-        report = classification_report(y_test.values, y_pred, target_names=target_names)
+        report = classification_report(y_test, y_pred, target_names=target_names)
         self.logger.info("report:\n{}".format(report))
 
         # TODO: confusion matrix.
