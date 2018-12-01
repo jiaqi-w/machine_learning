@@ -25,14 +25,14 @@ import pandas as pd
 from ml_algo.preprocessing.feature_processing import Feature_Processing
 from ml_algo.preprocessing.word_embedding import Word_Embedding
 from ml_algo.evaluation.confusion_matrix_helper import Confusion_Matrix_Helper as cm
+from keras.layers import LSTM
+from keras.optimizers import Adam
 
 __author__ = "Jiaqi"
 __version__ = "1"
-__date__ = "Nov 1 2018"
+__date__ = "Nov 31 2018"
 
-class CNN_NLP_Binary_Model():
-
-    # TODO: change this class into multi classifier
+class RNN_NLP_Model():
 
     def __init__(self,
                  classifier_name="cnn",
@@ -43,9 +43,8 @@ class CNN_NLP_Binary_Model():
                  data_name="data",
                  feature_name="f1.f2",
                  target_name="t",
-                 num_filter=2,
-                 keneral_size_list=(2,3,4),
-                 pool_size=1,
+                 num_class=1,
+                 num_lstm_layer=10,
                  drop_perc=0.5,
                  l2_constraint=3,
                  batch_size=100,
@@ -55,11 +54,10 @@ class CNN_NLP_Binary_Model():
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="CNN.log")
         self.feature_preprocessing = Feature_Processing()
         self.classifier_name = classifier_name
+        self.num_class = num_class
         self.num_words = num_words
         self.max_text_len = max_text_len
-        self.num_filter = num_filter
-        self.keneral_size_list = keneral_size_list
-        self.pool_size = pool_size
+        self.num_lstm_layer = num_lstm_layer
         self.drop_perc = drop_perc
         self.weight_decay = 1e-4
         self.l2_constraint = l2_constraint
@@ -109,14 +107,13 @@ class CNN_NLP_Binary_Model():
                             preprocess_name=None,
                             ):
 
-        model_name = "{}_{}numfilter_{}kernal_{}pool_{}drop_{}norm_{}batch_{}epoch".format(general_name,
-                                                                                              self.num_filter,
-                                                                                              re.sub(r"\s+", "", str(self.keneral_size_list)),
-                                                                                              self.pool_size,
-                                                                                              round(self.drop_perc, 2),
-                                                                                              self.l2_constraint,
-                                                                                              self.batch_size,
-                                                                                              self.epochs)
+        model_name = "{}_{}class_{}layer_{}drop_{}norm_{}batch_{}epoch".format(general_name,
+                                                                               self.num_class,
+                                                                               self.num_lstm_layer,
+                                                                               round(self.drop_perc, 2),
+                                                                               self.l2_constraint,
+                                                                               self.batch_size,
+                                                                               self.epochs)
         if preprocess_name is not None:
             model_name = "{}_{}".format(model_name, preprocess_name)
         self.model_name = model_name
@@ -144,8 +141,11 @@ class CNN_NLP_Binary_Model():
         if not os.path.exists(self.dump_model_fname) or replace_exists is True:
             self.model.save(self.dump_model_fname)
 
-    # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
     def train(self, X_train:pd.Series, y_train:pd.Series, replace_exists=False):
+        """
+        Reference
+        Dialogue Act Classification in Domain-Independent Conversations Using a Deep Recurrent Neural Network
+        """
         # Initial the embedding layer.
         self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values,
                                                                           num_words=self.num_words,
@@ -162,38 +162,23 @@ class CNN_NLP_Binary_Model():
 
         if self.model == None or replace_exists:
             self.logger.info("Training model {}".format(self.model_name))
-            inputs = []
-            input = Input(shape=(self.max_text_len,))
-            embedding = self.embedding_layer(input)
-            univariate_vectors = []
-            for filter_size in self.keneral_size_list:
-                # channel i
-                # input = Input(shape=(self.max_text_len,))
-                # embedding = self.embedding_layer(input)
-                conv1d = Conv1D(filters=self.num_filter, kernel_size=filter_size, activation='relu')(embedding)
-                # dropout to avoid overfitting
-                drop = Dropout(self.drop_perc)(conv1d)
-                pool1d = MaxPooling1D(pool_size=self.pool_size)(drop)
-                flat = Flatten()(pool1d)
-
-                inputs.append(input)
-                univariate_vectors.append(flat)
-
-            merged = concatenate(univariate_vectors)
-            # regularization
-            # dense_regularize = Dense(10, activation='relu', kernel_regularizer=regularizers.l2(self.weight_decay))(merged)
-            num_dense_units = self.num_filter * len(self.keneral_size_list)
-            if self.l2_constraint == 0:
-                dense_regularize = Dense(num_dense_units, activation='relu')(merged)
-            else:
-                dense_regularize = Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint))(merged)
-            outputs = Dense(1, activation='sigmoid')(dense_regularize)
-            # Please note that we are not using a sequencial model here
-            # self.model = Model(inputs=[inputs], outputs=outputs)
-            # self.model = Model(inputs=[input], outputs=outputs)
             self.model = Sequential()
-            self.model.add(Model(inputs=[input], outputs=outputs))
-            self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+            self.model.add(self.embedding_layer)
+            self.model.add(Dropout(self.drop_perc))
+
+            for i in range(1, self.num_lstm_layer):
+                self.model.add(LSTM(self.embedding_vector_dimension, return_sequences=True, dropout=self.drop_perc))
+            self.model.add(LSTM(self.embedding_vector_dimension))
+
+            # num_class = 1
+            self.model.add(Dense(self.num_class, activation='softmax'))
+
+            adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+            if self.num_class == 1:
+                self.model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+            else:
+                self.model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+
             self.logger.info("summarize:\n{}".format(self.model.summary()))
 
             # Log to tensorboard

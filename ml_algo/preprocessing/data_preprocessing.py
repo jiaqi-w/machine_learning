@@ -70,12 +70,6 @@ class Data_Preprocessing():
         return X, y
 
     def get_X_y_featurenames_from_file(self, filename, drop_colnames:list=None, label_colname="label", dataset="train", check_exits=False):
-        # TODO: Add Data_Preprocessing for data filtering.
-        # self.model_name = "{}_{}_{}".format(os.path.basename(filename), list(X.columns.values), label_colname)
-        # if check_exits is True:
-        #     self.X = Pickle_Helper.load_model_from_pickle("{}_X_{}.pickle".format(self.model_name, dataset))
-        #     self.y = Pickle_Helper.load_model_from_pickle("{}_y_{}.pickle".format(self.model_name, dataset))
-
         self.logger.info("Read file {}".format(filename))
         df = pd.read_csv(filename)
         return self.get_X_y_featurenames_from_dateframe(
