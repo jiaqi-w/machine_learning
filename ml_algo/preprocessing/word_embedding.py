@@ -122,6 +122,7 @@ class Word_Embedding():
             if embedding_vector_dimension != self.embedding_vector_dimension:
                 self.logger.error("Error, the embedding vector dimension should be {} instead of {}".format(self.embedding_vector_dimension, embedding_vector_dimension))
                 embedding_vector_dimension = self.embedding_vector_dimension
+            # Add one more dim for the bias. The bias will be the las row of the embedding matrix.
             self.embedding_matrix = np.zeros((len(word_index) + 1, embedding_vector_dimension))
             for word, i in word_index.items():
                 # Assign the pre-trained weight to the embedding vector.
