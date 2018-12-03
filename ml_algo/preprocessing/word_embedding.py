@@ -7,6 +7,7 @@ import datetime
 from keras.layers.embeddings import Embedding
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing import sequence
+import pandas as pd
 
 __author__ = "Jiaqi"
 __version__ = "1"
@@ -14,19 +15,19 @@ __date__ = "Oct 24 2018"
 
 class Word_Embedding():
 
-    def __init__(self, logger=None, glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt')):
+    def __init__(self, logger=None, embedding_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt')):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="word_embedding")
         self.tokenizer = None
-        self.init_dict(glove_fname=glove_fname)
+        self.init_dict(embedding_fname=embedding_fname)
 
-    def init_dict(self, glove_fname):
+    def init_dict(self, embedding_fname):
 
         self.embeddings_index = {}
         self.embedding_vector_dimension = None
 
         start = datetime.datetime.now()
-        with open(glove_fname) as glove_file:
-            for line in glove_file:
+        with open(embedding_fname) as embedding_file:
+            for line in embedding_file:
                 values = line.split()
                 word = values[0]
                 coefs = np.asarray(values[1:], dtype='float32')
@@ -35,8 +36,8 @@ class Word_Embedding():
                 self.embeddings_index[word] = coefs
 
         end = datetime.datetime.now()
-        self.logger.info("It takes {}s to load {} word vectors from GloVe {}"
-                         .format((end - start).total_seconds(), len(self.embeddings_index), glove_fname))
+        self.logger.info("It takes {}s to load {} word vectors from embedding file {}"
+                         .format((end - start).total_seconds(), len(self.embeddings_index), embedding_fname))
 
     def generate_model_name(self,
                              general_name,
@@ -86,7 +87,7 @@ class Word_Embedding():
                              num_words:int,
                              embedding_vector_dimension:int,
                              max_text_len:int,
-                             general_name="glove", replace_exists=False):
+                             general_name="embedding", replace_exists=False):
         # TODO: just deal with one column
         # The simplest way to do it is to execute by columns.
         if embedding_vector_dimension is None:
@@ -142,12 +143,12 @@ class Word_Embedding():
         return embedding_layer
 
 
-    def encode_X(self, X, max_text_len=None):
+    def encode_X(self, X:pd.Series, max_text_len=None):
         if self.tokenizer is None:
             self.logger.error("Please initial the embedding by Word_Embedding().init_embedding_layer first")
             return None
 
-        self.logger.info("X={}".format(X))
+        self.logger.info("X.head={}".format(X.head(5)))
         X = self.tokenizer.texts_to_sequences(X)
         self.logger.info("sequance X {}".format(X))
         if max_text_len == None:

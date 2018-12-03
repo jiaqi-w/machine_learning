@@ -34,6 +34,7 @@ __date__ = "Nov 1 2018"
 class CNN_NLP_Binary_Model():
 
     # TODO: change this class into multi classifier
+    # TODO: create deep learning abstract model.
 
     def __init__(self,
                  classifier_name="cnn",
@@ -71,7 +72,7 @@ class CNN_NLP_Binary_Model():
         # Initial the embedding layer.
         if glove_fname is not None:
 
-            self.embedding_helper = Word_Embedding(glove_fname=glove_fname)
+            self.embedding_helper = Word_Embedding(embedding_fname=glove_fname)
             if embedding_vector_dimension != self.embedding_helper.embedding_vector_dimension:
                 self.logger.error(
                     "Error, the embedding vector dimension should be {} instead of {}. Fix embedding_vector_dimension to {}".format(
@@ -88,10 +89,12 @@ class CNN_NLP_Binary_Model():
             self.embedding_vector_dimension = embedding_vector_dimension
             self.embedding_name = "{}_{}_{}_{}".format("token_vector", data_name, feature_name, target_name)
 
-        preprocess_name =self.embedding_helper.generate_model_name(general_name=self.embedding_name,
-                            num_words=num_words,
-                            embedding_vector_dimension=embedding_vector_dimension,
-                            max_text_len=max_text_len)
+        # FIXME: simplify the name stuff and move it into embedding class.
+        preprocess_name = self.embedding_helper.generate_model_name(
+            general_name=self.embedding_name,
+            num_words=num_words,
+            embedding_vector_dimension=embedding_vector_dimension,
+            max_text_len=max_text_len)
 
         self.load_model_if_exists(classifier_name=classifier_name,
                                   preprocess_name=preprocess_name)
@@ -127,7 +130,7 @@ class CNN_NLP_Binary_Model():
     def load_model_if_exists(self,
                              classifier_name="general",
                              preprocess_name="general",
-                             dump_model_dir=config.PREROCESS_PICKLES_DIR):
+                             dump_model_dir=config.DEEP_MODEL_PICKLES_DIR):
         # Load the file is not already done so. If there is no pickle created, train one for it.
         self.logger.info("Load Model")
 
@@ -243,5 +246,5 @@ class CNN_NLP_Binary_Model():
                                                             cm_fname=cm_fname,
                                                             show_cm=False)
 
-        return fieldnames, evaluate_dict
+        return fieldnames, evaluate_dict, y_pred
 
