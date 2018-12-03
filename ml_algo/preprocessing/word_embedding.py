@@ -15,7 +15,7 @@ __date__ = "Oct 24 2018"
 
 class Word_Embedding():
 
-    def __init__(self, logger=None, embedding_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt')):
+    def __init__(self, logger=None, embedding_fname=os.path.join(config.WORD_EMBEDDING_DIR, 'glove.6B.100d.txt')):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="word_embedding")
         self.tokenizer = None
         self.init_dict(embedding_fname=embedding_fname)

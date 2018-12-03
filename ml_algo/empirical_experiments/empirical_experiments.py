@@ -39,13 +39,16 @@ def run_cnn(cnn_setting_fname, X_train, y_train, X_test:pd.Series, y_test:pd.Ser
                 l2_constraint = int(row["l2_constraint"])
                 batch_size = int(row["batch_size"])
                 epochs = int(row["epochs"])
+                embedding_fname = row["embedding_file"]
+                if embedding_fname is not None:
+                    embedding_fname = os.path.join(config.WORD_EMBEDDING_DIR, embedding_fname)
 
                 training = CNN_NLP_Binary_Model(
                     classifier_name=classifier_name,
                     num_words=num_words,
                     max_text_len=max_text_len,
                     embedding_vector_dimension=embedding_vector_dimension,
-                    glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt'),
+                    embedding_fname=embedding_fname,
                     data_name=data_name,
                     num_filter=num_filter,
                     keneral_size_list=keneral_size_list,
@@ -64,7 +67,7 @@ def run_cnn(cnn_setting_fname, X_train, y_train, X_test:pd.Series, y_test:pd.Ser
                 # predict_df[training.model_name] = y_pred
                 # The original model's name is too long, index is easier to read.
                 predict_df["m{}_predict".format(i)] = y_pred
-                fieldnames = csv_reader.fieldnames + fieldnames
+                fieldnames = ["id"] + csv_reader.fieldnames + fieldnames
 
                 if evaluate_csv_writer is None:
                     evaluate_csv_writer = csv.DictWriter(evaluate_file, fieldnames=fieldnames)
@@ -73,6 +76,7 @@ def run_cnn(cnn_setting_fname, X_train, y_train, X_test:pd.Series, y_test:pd.Ser
 
                 new_row = {}
                 new_row.update(row)
+                new_row["id"] = i
                 new_row.update(evaluate_dict)
                 evaluate_csv_writer.writerow(new_row)
                 evaluate_file.flush()
@@ -106,13 +110,16 @@ def run_cnn_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fn
                 l2_constraint = int(row["l2_constraint"])
                 batch_size = int(row["batch_size"])
                 epochs = int(row["epochs"])
+                embedding_fname = row["embedding_file"]
+                if embedding_fname is not None:
+                    embedding_fname = os.path.join(config.WORD_EMBEDDING_DIR, embedding_fname)
 
                 training = CNN_RNN_NLP_Model(
                     classifier_name=classifier_name,
                     num_words=num_words,
                     max_text_len=max_text_len,
                     embedding_vector_dimension=embedding_vector_dimension,
-                    glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt'),
+                    glove_fname=embedding_fname,
                     data_name=data_name,
                     num_filter=num_filter,
                     keneral_size=keneral_size,
@@ -130,7 +137,7 @@ def run_cnn_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fn
                 # predict_df[training.model_name] = y_pred
                 # The original model's name is too long, index is easier to read.
                 predict_df["m{}_predict".format(i)] = y_pred
-                fieldnames = csv_reader.fieldnames + fieldnames
+                fieldnames = ["id"] + csv_reader.fieldnames + fieldnames
 
                 if evaluate_csv_writer is None:
                     evaluate_csv_writer = csv.DictWriter(evaluate_file, fieldnames=fieldnames)
@@ -139,6 +146,7 @@ def run_cnn_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fn
 
                 new_row = {}
                 new_row.update(row)
+                new_row["id"] = i
                 new_row.update(evaluate_dict)
                 evaluate_csv_writer.writerow(new_row)
                 evaluate_file.flush()
@@ -174,13 +182,16 @@ def run_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fname,
                 l2_constraint = int(row["l2_constraint"])
                 batch_size = int(row["batch_size"])
                 epochs = int(row["epochs"])
+                embedding_fname = row["embedding_file"]
+                if embedding_fname is not None:
+                    embedding_fname = os.path.join(config.WORD_EMBEDDING_DIR, embedding_fname)
 
                 training = RNN_NLP_Model(
                     classifier_name=classifier_name,
                     num_words=num_words,
                     max_text_len=max_text_len,
                     embedding_vector_dimension=embedding_vector_dimension,
-                    glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt'),
+                    glove_fname=embedding_fname,
                     data_name=data_name,
                     num_class=num_class,
                     num_lstm_layer=num_lstm_layer,

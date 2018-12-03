@@ -41,7 +41,7 @@ class CNN_NLP_Binary_Model():
                  num_words=10000,
                  max_text_len=1600,
                  embedding_vector_dimension=100,
-                 glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt'),
+                 embedding_fname=os.path.join(config.WORD_EMBEDDING_DIR, 'glove.6B.100d.txt'),
                  data_name="data",
                  feature_name="f1.f2",
                  target_name="t",
@@ -70,9 +70,9 @@ class CNN_NLP_Binary_Model():
         self.model = None
 
         # Initial the embedding layer.
-        if glove_fname is not None:
+        if embedding_fname is not None:
 
-            self.embedding_helper = Word_Embedding(embedding_fname=glove_fname)
+            self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname)
             if embedding_vector_dimension != self.embedding_helper.embedding_vector_dimension:
                 self.logger.error(
                     "Error, the embedding vector dimension should be {} instead of {}. Fix embedding_vector_dimension to {}".format(
@@ -82,7 +82,7 @@ class CNN_NLP_Binary_Model():
                     ))
 
             self.embedding_vector_dimension = self.embedding_helper.embedding_vector_dimension
-            self.embedding_name = "{}_{}_{}_{}".format(re.sub(r"\.txt", "_", os.path.basename(glove_fname)), data_name, feature_name, target_name)
+            self.embedding_name = "{}_{}_{}_{}".format(re.sub(r"\.txt", "_", os.path.basename(embedding_fname)), data_name, feature_name, target_name)
         else:
             # If the embedding is not specified, we would use the plain token vector.
             self.embedding_helper = Word_Embedding()
