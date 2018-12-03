@@ -25,7 +25,7 @@ from sklearn import metrics
 
 from ml_algo.preprocessing.feature_processing import Feature_Processing
 from ml_algo.preprocessing.word_embedding import Word_Embedding
-from ml_algo.evaluation.confusion_matrix_helper import Confusion_Matrix_Helper as cm
+from ml_algo.evaluation.model_evaluator import Model_Evaluator
 
 __author__ = "Jiaqi"
 __version__ = "1"
@@ -208,19 +208,19 @@ class CNN_NLP_Binary_Model():
         else:
             self.logger.info("Trained model {}".format(self.model_name))
 
-    def evaluate_model(self, X_test:pd.Series, y_test:pd.Series, predict_fname=None, cm_fname=None, evaluate_fname=None):
+    def evaluate_model(self, X_test:pd.Series, y_test:pd.Series, output_evaluate_dir=config.EVALUATE_DATA_DIR):
         if self.model == None:
             self.logger.error("Please train the model first. There is no model for {}".format(self.model_name))
         self.logger.info("Evalute model {}".format(self.model_name))
         # self.logger.info("X_test={}".format(X_test))
 
-        X_test = self.embedding_helper.encode_X(X_test, max_text_len=self.max_text_len)
+        X_encode = self.embedding_helper.encode_X(X_test, max_text_len=self.max_text_len)
 
         # accuracy
         # scores = self.model.evaluate(X_test, y_test, verbose=0)
         # self.logger.info("Accuracy: %.2f%%" % (scores[-1] * 100))
 
-        y_pred = self.model.predict_classes(X_test)
+        y_pred = self.model.predict_classes(X_encode)
         # y_pred = self.model.predict(X_test)
         # y_pred = y_pred.argmax(axis=-1)
         self.logger.info("y_pred {}".format(y_pred))
@@ -228,49 +228,20 @@ class CNN_NLP_Binary_Model():
         y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
 
-        # TODO: save the evaluation results in the future.
-        evaluate_dict = {}
+        model_evaluator = Model_Evaluator(y_gold=y_test.tolist(), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
 
-        precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='macro')
-        evaluate_dict["macro_prec"] = round(precision, 4)
-        evaluate_dict["macro_recall"] = round(recall, 4)
-        evaluate_dict["macro_f1"] = round(F1, 4)
-        self.logger.info("macro precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
-        precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='micro')
-        evaluate_dict["micro_prec"] = round(precision, 4)
-        evaluate_dict["micro_recall"] = round(recall, 4)
-        evaluate_dict["micro_f1"] = round(F1, 4)
-        self.logger.info("micro precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
-        precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='weighted')
-        evaluate_dict["weighted_prec"] = round(precision, 4)
-        evaluate_dict["weighted_recall"] = round(recall, 4)
-        evaluate_dict["weighted_f1"] = round(F1, 4)
-        self.logger.info("weighted precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
+        fieldnames = model_evaluator.get_evaluation_fieldnames()
 
-        # For specific class names.
-        class_label = list(set(y_test))
-        precision = metrics.precision_score(y_test, y_pred, labels=class_label, average=None)
-        recall = metrics.recall_score(y_test, y_pred, average=None)
-        F1 = metrics.f1_score(y_test, y_pred, average=None)
-        for i, label in enumerate(class_label):
-            evaluate_dict["{}_prec".format(label)] = round(precision[i], 4)
-            evaluate_dict["{}_recall".format(label)] = round(recall[i], 4)
-            evaluate_dict["{}_f1".format(label)] = round(F1[i], 4)
+        evaluate_fname, predict_fname, cm_fname = None, None, None
+        if output_evaluate_dir is not None:
+            evaluate_fname = os.path.join(output_evaluate_dir, "{}_evaluate.csv".format(self.model_name))
+            predict_fname = os.path.join(output_evaluate_dir, "{}_predict.csv".format(self.model_name))
+            cm_fname = os.path.join(output_evaluate_dir, "{}_cm.csv".format(self.model_name))
 
-        target_names = self.feature_preprocessing.get_target_names(y_test)
-        report = classification_report(y_test, y_pred, target_names=target_names)
-        self.logger.info("report:\n{}".format(report))
+        evaluate_dict = model_evaluator.get_evaluation_dict(evaluation_fname=evaluate_fname,
+                                                            predict_fname=predict_fname,
+                                                            cm_fname=cm_fname,
+                                                            show_cm=False)
 
-        # TODO: confusion matrix.
-        cm.evaluate(y_test.tolist(), y_pred.flatten().tolist(), cm_outfname="{}_cm.csv".format(self.model_name))
-
-        # TODO: output results.
-        if predict_fname is not None:
-            with open(predict_fname, "w") as predict_file:
-                df = pd.DataFrame(data=X_test)
-                df["predict"] = y_pred
-                df.to_csv(predict_file)
-                self.logger.info("Save prediction results to {}".format(predict_fname))
-
-        return evaluate_dict
+        return fieldnames, evaluate_dict
 
