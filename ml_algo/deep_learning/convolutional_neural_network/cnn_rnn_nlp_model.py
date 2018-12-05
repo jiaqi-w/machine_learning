@@ -55,11 +55,20 @@ class CNN_RNN_NLP_Model(Deep_NLP_Abstract_Class):
                  l2_constraint=3,
                  batch_size=100,
                  epochs=10,
-                 model_learning_rate=None,
-                 model_weight_decate_rate=None,
+                 model_learning_rate=1e-3,
+                 model_weight_decate_rate=0.7,
                  model_weight_imbalance_class=False,
                  replace_exists=False,
                  logger=None):
+
+        self.num_filter = num_filter
+        self.keneral_size = keneral_size
+        self.pool_size = pool_size
+        self.drop_perc = drop_perc
+        # self.weight_decay = 1e-4
+        self.l2_constraint = l2_constraint
+
+        # the super() has to follow the parameter init since the get_custom_name() is invoked with the require value.
 
         super().__init__(
             classifier_name=classifier_name,
@@ -80,12 +89,7 @@ class CNN_RNN_NLP_Model(Deep_NLP_Abstract_Class):
             replace_exists=replace_exists,
             logger=logger
         )
-        self.num_filter = num_filter
-        self.keneral_size = keneral_size
-        self.pool_size = pool_size
-        self.drop_perc = drop_perc
-        # self.weight_decay = 1e-4
-        self.l2_constraint = l2_constraint
+
 
     def get_custom_name(self):
         # return custom name for the define model.
@@ -127,9 +131,9 @@ class CNN_RNN_NLP_Model(Deep_NLP_Abstract_Class):
     # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
     def define_model(self):
         self.logger.info("Training model {}".format(self.model_name))
-        inputs = []
-        input = Input(shape=(self.max_text_len,))
-        embedding = self.embedding_layer(input)
+        # inputs = []
+        # input = Input(shape=(self.max_text_len,))
+        # embedding = self.embedding_layer(input)
         # univariate_vectors = []
         # for filter_size in self.keneral_size_list:
         #     # channel i

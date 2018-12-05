@@ -72,7 +72,7 @@ class RNN_NLP_Model(Deep_NLP_Abstract_Class):
         self.learning_rate = learning_rate
         self.weight_decate_rate = weight_decate_rate
 
-        # the super has to follow the parameter init since the get_custom_name() is invoked with the require value.
+        # the super() has to follow the parameter init since the get_custom_name() is invoked with the require value.
 
         super().__init__(
             classifier_name=classifier_name,

@@ -6,6 +6,7 @@ from keras.layers import Dense
 from keras.layers import Dropout
 from keras.layers import Flatten
 from keras.layers import Input
+from keras.models import Model
 from keras.layers.convolutional import Conv1D
 from keras.layers.convolutional import MaxPooling1D
 from keras.layers.merge import concatenate
@@ -38,13 +39,22 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
                  pool_size=1,
                  drop_perc=0.5,
                  l2_constraint=3,
-                 model_learning_rate=None,
-                 model_weight_decate_rate=None,
+                 model_learning_rate=1e-3,
+                 model_weight_decate_rate=0.7,
                  model_weight_imbalance_class=False,
                  batch_size=100,
                  epochs=10,
                  replace_exists=False,
                  logger=None):
+
+
+        self.num_filter = num_filter
+        self.keneral_size_list = keneral_size_list
+        self.pool_size = pool_size
+        self.drop_perc = drop_perc
+        self.l2_constraint = l2_constraint
+
+        # the super() has to follow the parameter init since the get_custom_name() is invoked with the require value.
 
         super().__init__(
             classifier_name=classifier_name,
@@ -66,11 +76,6 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
             logger=logger
         )
 
-        self.num_filter = num_filter
-        self.keneral_size_list = keneral_size_list
-        self.pool_size = pool_size
-        self.drop_perc = drop_perc
-        self.l2_constraint = l2_constraint
 
     def get_custom_name(self):
         # return custom name for the define model.
@@ -116,6 +121,8 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
 
         :return:
         '''
+        self.model = Sequential()
+
         input = Input(shape=(self.max_text_len,))
         embedding = self.embedding_layer(input)
         univariate_vectors = []
@@ -130,13 +137,19 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
             flat = Flatten()(pool1d)
             univariate_vectors.append(flat)
         merged = concatenate(univariate_vectors)
+
+        self.model.add(Model(inputs=[input], outputs=merged))
+
         # regularization
         # dense_regularize = Dense(10, activation='relu', kernel_regularizer=regularizers.l2(self.weight_decay))(merged)
         num_dense_units = self.num_filter * len(self.keneral_size_list)
         if self.l2_constraint == 0:
-            dense_regularize = Dense(num_dense_units, activation='relu')(merged)
+            # dense_regularize = Dense(num_dense_units, activation='relu')(merged)
+            self.model.add(Dense(num_dense_units, activation='relu', name="dense_regularize"))
         else:
-            dense_regularize = Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint))(merged)
-        self.model = Sequential()
-        self.model.add(dense_regularize)
+            # dense_regularize = Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint))(merged)
+            self.model.add(Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint)))
+        # outputs = Dense(1, activation='sigmoid')(dense_regularize)
+        # self.model.add(Model(inputs=[input], outputs=dense_regularize))
+
 
