@@ -10,6 +10,7 @@ import itertools
 import csv
 from sklearn import metrics
 from utils.file_logger import File_Logger_Helper
+from sklearn.metrics import accuracy_score
 
 __author__ = "Jiaqi"
 __version__ = "1"
@@ -30,9 +31,10 @@ class Model_Evaluator():
         for class_name in self.class_names:
             # evaluation metric header
             fieldnames += ["{}_prec".format(class_name), "{}_recall".format(class_name), "{}_f1".format(class_name)]
-        fieldnames += ['macro_prec', 'macro_recall', 'macro_f1',
-                      'micro_prec', 'micro_recall', 'micro_f1',
-                      "weighted_prec", "weighted_recall", "weighted_f1"]
+        fieldnames += ['accuracy',
+                       'macro_prec', 'macro_recall', 'macro_f1',
+                       'micro_prec', 'micro_recall', 'micro_f1',
+                       "weighted_prec", "weighted_recall", "weighted_f1"]
 
         if with_cm is True:
             for class_name in self.class_names:
@@ -52,6 +54,9 @@ class Model_Evaluator():
 
         # TODO: save the evaluation results in the future.
         metric_dict = {}
+
+        accuracy = accuracy_score(self.y_gold, self.y_pred)
+        metric_dict["accuracy"] = round(accuracy, 4)
 
         precision, recall, F1, support = precision_recall_fscore_support(self.y_gold, self.y_pred, average='macro')
         metric_dict["macro_prec"] = round(precision, 4)

@@ -1,11 +1,13 @@
-import csv
 import ast
-from ml_algo.convolutional_neural_network.cnn_nlp_binary_model import CNN_NLP_Binary_Model
-from ml_algo.convolutional_neural_network.cnn_rnn_nlp_model import CNN_RNN_NLP_Model
-from ml_algo.recursive_neural_network.rnn_nlp_model import RNN_NLP_Model
+import csv
 import os
-import config
+
 import pandas as pd
+
+import config
+from ml_algo.deep_learning.convolutional_neural_network.cnn_nlp_model import CNN_NLP_Model
+from ml_algo.deep_learning.convolutional_neural_network.cnn_rnn_nlp_model import CNN_RNN_NLP_Model
+from ml_algo.deep_learning.recursive_neural_network.rnn_nlp_model import RNN_NLP_Model
 
 __author__ = "Jiaqi"
 __version__ = "1"
@@ -43,7 +45,7 @@ def run_cnn(cnn_setting_fname, X_train, y_train, X_test:pd.Series, y_test:pd.Ser
                 if embedding_fname is not None:
                     embedding_fname = os.path.join(config.WORD_EMBEDDING_DIR, embedding_fname)
 
-                training = CNN_NLP_Binary_Model(
+                training = CNN_NLP_Model(
                     classifier_name=classifier_name,
                     num_words=num_words,
                     max_text_len=max_text_len,
@@ -59,8 +61,9 @@ def run_cnn(cnn_setting_fname, X_train, y_train, X_test:pd.Series, y_test:pd.Ser
                     epochs=epochs,
                     feature_name=feature_name,
                     target_name=target_name,
+                    replace_exists=replace_exists
                 )
-                training.train(X_train, y_train, replace_exists=replace_exists)
+                training.train(X_train, y_train)
                 print("y_test distribution", y_test.value_counts())
 
                 fieldnames, evaluate_dict, y_pred = training.evaluate_model(X_test, y_test, output_evaluate_dir=None)
@@ -104,7 +107,7 @@ def run_cnn_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fn
                 feature_name = row["feature_name"]
                 target_name = row["target_name"]
                 num_filter = int(row["num_filter"])
-                keneral_size = ast.literal_eval(row["keneral_size"])
+                keneral_size = int(row["keneral_size"])
                 pool_size = int(row["pool_size"])
                 drop_perc = float(row["drop_perc"])
                 l2_constraint = int(row["l2_constraint"])
@@ -119,7 +122,7 @@ def run_cnn_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fn
                     num_words=num_words,
                     max_text_len=max_text_len,
                     embedding_vector_dimension=embedding_vector_dimension,
-                    glove_fname=embedding_fname,
+                    embedding_fname=embedding_fname,
                     data_name=data_name,
                     num_filter=num_filter,
                     keneral_size=keneral_size,
@@ -130,8 +133,9 @@ def run_cnn_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fn
                     epochs=epochs,
                     feature_name=feature_name,
                     target_name=target_name,
+                    replace_exists=replace_exists
                 )
-                training.train(X_train, y_train, replace_exists=replace_exists)
+                training.train(X_train, y_train)
                 print("y_test distribution", y_test.value_counts())
                 fieldnames, evaluate_dict, y_pred = training.evaluate_model(X_test, y_test, output_evaluate_dir=None)
                 # predict_df[training.model_name] = y_pred
@@ -179,7 +183,7 @@ def run_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fname,
                 num_class = int(row["num_class"])
                 num_lstm_layer = int(row["num_lstm_layer"])
                 drop_perc = float(row["drop_perc"])
-                l2_constraint = int(row["l2_constraint"])
+                # l2_constraint = int(row["l2_constraint"])
                 batch_size = int(row["batch_size"])
                 epochs = int(row["epochs"])
                 embedding_fname = row["embedding_file"]
@@ -191,18 +195,19 @@ def run_rnn(cnn_setting_fname, X_train, y_train, X_test, y_test, evaluate_fname,
                     num_words=num_words,
                     max_text_len=max_text_len,
                     embedding_vector_dimension=embedding_vector_dimension,
-                    glove_fname=embedding_fname,
+                    embedding_fname=embedding_fname,
                     data_name=data_name,
                     num_class=num_class,
                     num_lstm_layer=num_lstm_layer,
                     drop_perc=drop_perc,
-                    l2_constraint=l2_constraint,
+                    # l2_constraint=l2_constraint,
                     batch_size=batch_size,
                     epochs=epochs,
                     feature_name=feature_name,
                     target_name=target_name,
+                    replace_exists=replace_exists
                 )
-                training.train(X_train, y_train, replace_exists=replace_exists)
+                training.train(X_train, y_train)
                 print("y_test distribution", y_test.value_counts())
                 evaluate_dict = training.evaluate_model(X_test, y_test)
 

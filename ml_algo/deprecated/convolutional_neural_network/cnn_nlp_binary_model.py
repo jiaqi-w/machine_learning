@@ -2,7 +2,6 @@ import config
 import os, re
 from utils.file_logger import File_Logger_Helper
 
-import numpy as np
 from keras.callbacks import TensorBoard
 from keras import regularizers
 from keras.constraints import max_norm
@@ -21,30 +20,34 @@ from keras.models import load_model
 from sklearn.metrics import classification_report
 from sklearn.metrics import precision_recall_fscore_support
 import pandas as pd
+from sklearn import metrics
 
 from ml_algo.preprocessing.feature_processing import Feature_Processing
 from ml_algo.preprocessing.word_embedding import Word_Embedding
-from ml_algo.evaluation.confusion_matrix_helper import Confusion_Matrix_Helper as cm
-from keras.layers import LSTM
-from keras.optimizers import Adam
+from ml_algo.evaluation.model_evaluator import Model_Evaluator
 
 __author__ = "Jiaqi"
 __version__ = "1"
-__date__ = "Nov 31 2018"
+__date__ = "Nov 1 2018"
 
-class RNN_NLP_Model():
+class CNN_NLP_Binary_Model():
+
+    # TODO: change this class into multi classifier
+    # TODO: create deep learning abstract model.
 
     def __init__(self,
                  classifier_name="cnn",
                  num_words=10000,
                  max_text_len=1600,
                  embedding_vector_dimension=100,
-                 glove_fname=os.path.join(config.GLOVE_SIXB, 'glove.6B.100d.txt'),
+                 embedding_fname=os.path.join(config.WORD_EMBEDDING_DIR, 'glove.6B.100d.txt'),
                  data_name="data",
                  feature_name="f1.f2",
                  target_name="t",
                  num_class=1,
-                 num_lstm_layer=10,
+                 num_filter=2,
+                 keneral_size_list=(2,3,4),
+                 pool_size=1,
                  drop_perc=0.5,
                  l2_constraint=3,
                  batch_size=100,
@@ -54,21 +57,26 @@ class RNN_NLP_Model():
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="CNN.log")
         self.feature_preprocessing = Feature_Processing()
         self.classifier_name = classifier_name
-        self.num_class = num_class
         self.num_words = num_words
         self.max_text_len = max_text_len
-        self.num_lstm_layer = num_lstm_layer
+        self.num_filter = num_filter
+        self.keneral_size_list = keneral_size_list
+        self.pool_size = pool_size
         self.drop_perc = drop_perc
         self.weight_decay = 1e-4
         self.l2_constraint = l2_constraint
         self.batch_size = batch_size
         self.epochs = epochs
+        self.data_name = data_name
+        self.feature_name = feature_name
+        self.target_name = target_name
+        self.num_class = num_class
         self.model = None
 
         # Initial the embedding layer.
-        if glove_fname is not None:
+        if embedding_fname is not None:
 
-            self.embedding_helper = Word_Embedding(glove_fname=glove_fname)
+            self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname)
             if embedding_vector_dimension != self.embedding_helper.embedding_vector_dimension:
                 self.logger.error(
                     "Error, the embedding vector dimension should be {} instead of {}. Fix embedding_vector_dimension to {}".format(
@@ -78,42 +86,45 @@ class RNN_NLP_Model():
                     ))
 
             self.embedding_vector_dimension = self.embedding_helper.embedding_vector_dimension
-            self.embedding_name = "{}_{}_{}_{}".format(re.sub(r"\.txt", "_", os.path.basename(glove_fname)), data_name, feature_name, target_name)
+            self.embedding_name = re.sub(r"\.txt", "_", os.path.basename(embedding_fname))
         else:
             # If the embedding is not specified, we would use the plain token vector.
             self.embedding_helper = Word_Embedding()
             self.embedding_vector_dimension = embedding_vector_dimension
-            self.embedding_name = "{}_{}_{}_{}".format("token_vector", data_name, feature_name, target_name)
+            self.embedding_name = "token_vector"
 
-        preprocess_name =self.embedding_helper.generate_model_name(general_name=self.embedding_name,
-                            num_words=num_words,
-                            embedding_vector_dimension=embedding_vector_dimension,
-                            max_text_len=max_text_len)
+        # FIXME: simplify the name stuff and move it into embedding class.
+        self.preprocessing_name = self.embedding_helper.generate_model_name(
+            embedding_name=self.embedding_name,
+            num_words=num_words,
+            embedding_vector_dimension=embedding_vector_dimension,
+            max_text_len=max_text_len,
+            data_name=data_name,
+            feature_name=feature_name,
+            target_name=target_name,
+        )
 
         self.load_model_if_exists(classifier_name=classifier_name,
-                                  preprocess_name=preprocess_name)
+                                  preprocess_name=self.preprocessing_name)
 
     def reset_max_text_len(self, max_text_len=1600):
         self.max_text_len = max_text_len
-        preprocess_name =self.embedding_helper.generate_model_name(general_name=self.embedding_name,
-                            num_words=self.num_words,
-                            embedding_vector_dimension=self.embedding_vector_dimension,
-                            max_text_len=max_text_len)
         self.load_model_if_exists(classifier_name=self.classifier_name,
-                                  preprocess_name=preprocess_name)
+                                  preprocess_name=self.preprocessing_name)
 
     def generate_model_name(self,
                             general_name,
                             preprocess_name=None,
                             ):
 
-        model_name = "{}_{}class_{}layer_{}drop_{}norm_{}batch_{}epoch".format(general_name,
-                                                                               self.num_class,
-                                                                               self.num_lstm_layer,
-                                                                               round(self.drop_perc, 2),
-                                                                               self.l2_constraint,
-                                                                               self.batch_size,
-                                                                               self.epochs)
+        model_name = "{}_{}numfilter_{}kernal_{}pool_{}drop_{}norm_{}batch_{}epoch".format(general_name,
+                                                                                              self.num_filter,
+                                                                                              re.sub(r"\s+", "", str(self.keneral_size_list)),
+                                                                                              self.pool_size,
+                                                                                              round(self.drop_perc, 2),
+                                                                                              self.l2_constraint,
+                                                                                              self.batch_size,
+                                                                                              self.epochs)
         if preprocess_name is not None:
             model_name = "{}_{}".format(model_name, preprocess_name)
         self.model_name = model_name
@@ -123,7 +134,7 @@ class RNN_NLP_Model():
     def load_model_if_exists(self,
                              classifier_name="general",
                              preprocess_name="general",
-                             dump_model_dir=config.PREROCESS_PICKLES_DIR):
+                             dump_model_dir=config.DEEP_MODEL_PICKLES_DIR):
         # Load the file is not already done so. If there is no pickle created, train one for it.
         self.logger.info("Load Model")
 
@@ -141,18 +152,17 @@ class RNN_NLP_Model():
         if not os.path.exists(self.dump_model_fname) or replace_exists is True:
             self.model.save(self.dump_model_fname)
 
+    # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
     def train(self, X_train:pd.Series, y_train:pd.Series, replace_exists=False):
-        """
-        Reference
-        Dialogue Act Classification in Domain-Independent Conversations Using a Deep Recurrent Neural Network
-        """
-        # Initial the embedding layer.
+        # Initial the embedding layer. Don't replace the embedding since it could be shared between different models.
         self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values,
                                                                           num_words=self.num_words,
                                                                           embedding_vector_dimension=self.embedding_vector_dimension,
                                                                           max_text_len=self.max_text_len,
-                                                                          general_name=self.embedding_name,
-                                                                          replace_exists=replace_exists
+                                                                          embedding_name=self.embedding_name,
+                                                                          feature_name=self.feature_name,
+                                                                          target_name=self.target_name,
+                                                                          replace_exists=False
                                                                           )
 
         # Pad the sequence to the same length
@@ -162,23 +172,38 @@ class RNN_NLP_Model():
 
         if self.model == None or replace_exists:
             self.logger.info("Training model {}".format(self.model_name))
-            self.model = Sequential()
-            self.model.add(self.embedding_layer)
-            self.model.add(Dropout(self.drop_perc))
+            inputs = []
+            input = Input(shape=(self.max_text_len,))
+            embedding = self.embedding_layer(input)
+            univariate_vectors = []
+            for filter_size in self.keneral_size_list:
+                # channel i
+                # input = Input(shape=(self.max_text_len,))
+                # embedding = self.embedding_layer(input)
+                conv1d = Conv1D(filters=self.num_filter, kernel_size=filter_size, activation='relu')(embedding)
+                # dropout to avoid overfitting
+                drop = Dropout(self.drop_perc)(conv1d)
+                pool1d = MaxPooling1D(pool_size=self.pool_size)(drop)
+                flat = Flatten()(pool1d)
 
-            for i in range(1, self.num_lstm_layer):
-                self.model.add(LSTM(self.embedding_vector_dimension, return_sequences=True, dropout=self.drop_perc))
-            self.model.add(LSTM(self.embedding_vector_dimension))
+                inputs.append(input)
+                univariate_vectors.append(flat)
 
-            # num_class = 1
-            self.model.add(Dense(self.num_class, activation='softmax'))
-
-            adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
-            if self.num_class == 1:
-                self.model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+            merged = concatenate(univariate_vectors)
+            # regularization
+            # dense_regularize = Dense(10, activation='relu', kernel_regularizer=regularizers.l2(self.weight_decay))(merged)
+            num_dense_units = self.num_filter * len(self.keneral_size_list)
+            if self.l2_constraint == 0:
+                dense_regularize = Dense(num_dense_units, activation='relu')(merged)
             else:
-                self.model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
-
+                dense_regularize = Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint))(merged)
+            outputs = Dense(1, activation='sigmoid')(dense_regularize)
+            # Please note that we are not using a sequencial model here
+            # self.model = Model(inputs=[inputs], outputs=outputs)
+            # self.model = Model(inputs=[input], outputs=outputs)
+            self.model = Sequential()
+            self.model.add(Model(inputs=[input], outputs=outputs))
+            self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             self.logger.info("summarize:\n{}".format(self.model.summary()))
 
             # Log to tensorboard
@@ -192,19 +217,19 @@ class RNN_NLP_Model():
         else:
             self.logger.info("Trained model {}".format(self.model_name))
 
-    def evaluate_model(self, X_test:pd.Series, y_test:pd.Series, predict_fname=None, cm_fname=None, evaluate_fname=None):
+    def evaluate_model(self, X_test:pd.Series, y_test:pd.Series, output_evaluate_dir=config.EVALUATE_DATA_DIR):
         if self.model == None:
             self.logger.error("Please train the model first. There is no model for {}".format(self.model_name))
         self.logger.info("Evalute model {}".format(self.model_name))
-        self.logger.info("X_test={}".format(X_test))
+        # self.logger.info("X_test={}".format(X_test))
 
-        X_test = self.embedding_helper.encode_X(X_test, max_text_len=self.max_text_len)
+        X_encode = self.embedding_helper.encode_X(X_test, max_text_len=self.max_text_len)
 
         # accuracy
         # scores = self.model.evaluate(X_test, y_test, verbose=0)
         # self.logger.info("Accuracy: %.2f%%" % (scores[-1] * 100))
 
-        y_pred = self.model.predict_classes(X_test)
+        y_pred = self.model.predict_classes(X_encode)
         # y_pred = self.model.predict(X_test)
         # y_pred = y_pred.argmax(axis=-1)
         self.logger.info("y_pred {}".format(y_pred))
@@ -212,39 +237,20 @@ class RNN_NLP_Model():
         y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
 
-        # TODO: save the evaluation results in the future.
-        evaluate_dict = {}
-        precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='macro')
-        evaluate_dict["macro_prec"] = round(precision, 4)
-        evaluate_dict["macro_recall"] = round(recall, 4)
-        evaluate_dict["macro_f1"] = round(F1, 4)
-        self.logger.info("macro precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
-        precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='micro')
-        evaluate_dict["micro_prec"] = round(precision, 4)
-        evaluate_dict["micro_recall"] = round(recall, 4)
-        evaluate_dict["micro_f1"] = round(F1, 4)
-        self.logger.info("micro precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
-        precision, recall, F1, support = precision_recall_fscore_support(y_test, y_pred, average='weighted')
-        evaluate_dict["weighted_prec"] = round(precision, 4)
-        evaluate_dict["weighted_recall"] = round(recall, 4)
-        evaluate_dict["weighted_f1"] = round(F1, 4)
-        self.logger.info("weighted precision={}, recall={}, f1={}, support={}".format(round(precision, 4), round(recall, 4), round(F1, 4), support))
+        model_evaluator = Model_Evaluator(y_gold=y_test.tolist(), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
 
-        target_names = self.feature_preprocessing.get_target_names(y_test)
+        fieldnames = model_evaluator.get_evaluation_fieldnames()
 
-        report = classification_report(y_test, y_pred, target_names=target_names)
-        self.logger.info("report:\n{}".format(report))
+        evaluate_fname, predict_fname, cm_fname = None, None, None
+        if output_evaluate_dir is not None:
+            evaluate_fname = os.path.join(output_evaluate_dir, "{}_evaluate.csv".format(self.model_name))
+            predict_fname = os.path.join(output_evaluate_dir, "{}_predict.csv".format(self.model_name))
+            cm_fname = os.path.join(output_evaluate_dir, "{}_cm.csv".format(self.model_name))
 
-        # TODO: confusion matrix.
-        cm.evaluate(y_test.tolist(), y_pred.flatten().tolist(), cm_outfname="{}_cm.csv".format(self.model_name))
+        evaluate_dict = model_evaluator.get_evaluation_dict(evaluation_fname=evaluate_fname,
+                                                            predict_fname=predict_fname,
+                                                            cm_fname=cm_fname,
+                                                            show_cm=False)
 
-        # TODO: output results.
-        if predict_fname is not None:
-            with open(predict_fname, "w") as predict_file:
-                df = pd.DataFrame(data=X_test)
-                df["predict"] = y_pred
-                df.to_csv(predict_file)
-                self.logger.info("Save prediction results to {}".format(predict_fname))
-
-        return evaluate_dict
+        return fieldnames, evaluate_dict, y_pred
 

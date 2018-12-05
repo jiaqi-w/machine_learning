@@ -18,6 +18,7 @@ class Word_Embedding():
     def __init__(self, logger=None, embedding_fname=os.path.join(config.WORD_EMBEDDING_DIR, 'glove.6B.100d.txt')):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="word_embedding")
         self.tokenizer = None
+        self.embedding_matrix = None
         self.init_dict(embedding_fname=embedding_fname)
 
     def init_dict(self, embedding_fname):
@@ -40,12 +41,24 @@ class Word_Embedding():
                          .format((end - start).total_seconds(), len(self.embeddings_index), embedding_fname))
 
     def generate_model_name(self,
-                             general_name,
-                             num_words:int,
-                             embedding_vector_dimension:int,
-                             max_text_len:int):
+                            embedding_name,
+                            num_words: int,
+                            embedding_vector_dimension: int,
+                            max_text_len: int,
+                            data_name=None,
+                            feature_name=None,
+                            target_name=None
+                            ):
 
-        model_name = general_name
+        model_name = embedding_name
+
+        if data_name is not None:
+            model_name = model_name + "_{}".format(data_name)
+        if feature_name is not None:
+            model_name = model_name + "_{}".format(feature_name)
+        if target_name is not None:
+            model_name = model_name + "_{}".format(target_name)
+
         if num_words is not None:
             model_name = model_name + "_{}tkn".format(num_words)
         if embedding_vector_dimension is not None:
@@ -58,10 +71,14 @@ class Word_Embedding():
         return model_name
 
     def load_model_if_exists(self,
-                             general_name,
-                             num_words:int,
-                             embedding_vector_dimension:int,
-                             max_text_len:int,
+                             embedding_name,
+                             num_words: int,
+                             embedding_vector_dimension: int,
+                             max_text_len: int,
+                             data_name=None,
+                             feature_name=None,
+                             target_name=None,
+                             replace_exists=False,
                              dump_model_dir=config.PREROCESS_PICKLES_DIR):
         # Load the file is not already done so. If there is no pickle created, train one for it.
         self.logger.info("Load Model")
@@ -70,33 +87,53 @@ class Word_Embedding():
         if not os.path.exists(dump_model_dir):
             os.makedirs(dump_model_dir)
 
-        self.generate_model_name(general_name=general_name,
+        self.generate_model_name(embedding_name=embedding_name,
                                  num_words=num_words,
                                  embedding_vector_dimension=embedding_vector_dimension,
-                                 max_text_len=max_text_len)
+                                 max_text_len=max_text_len,
+                                 data_name=data_name,
+                                 feature_name=feature_name,
+                                 target_name=target_name,
+                                 )
 
         self.dump_tokenizer_fname = os.path.join(dump_model_dir, "{}_tokenizer.pickle".format(self.model_name))
-        self.tokenizer = Pickle_Helper.load_model_from_pickle(self.dump_tokenizer_fname)
+        self.dump_embmatrix_fname = os.path.join(dump_model_dir, "{}_embmatrix.pickle".format(self.model_name))
+        if replace_exists is False:
+            self.tokenizer = Pickle_Helper.load_model_from_pickle(self.dump_tokenizer_fname)
+            self.embedding_matrix = Pickle_Helper.load_model_from_pickle(self.dump_embmatrix_fname)
 
     def store_model(self, replace_exists=False):
         if not os.path.exists(self.dump_tokenizer_fname) or replace_exists is True:
             if self.tokenizer is not None:
                 Pickle_Helper.save_model_to_pickle(self.tokenizer, self.dump_tokenizer_fname)
 
+        if not os.path.exists(self.dump_embmatrix_fname) or replace_exists is True:
+            if self.embedding_matrix is not None:
+                Pickle_Helper.save_model_to_pickle(self.embedding_matrix, self.dump_embmatrix_fname)
+
     def init_embedding_layer(self, X:np.ndarray,
                              num_words:int,
                              embedding_vector_dimension:int,
                              max_text_len:int,
-                             general_name="embedding", replace_exists=False):
+                             embedding_name="embedding",
+                             data_name=None,
+                             feature_name=None,
+                             target_name=None,
+                             replace_exists=False):
         # TODO: just deal with one column
         # The simplest way to do it is to execute by columns.
         if embedding_vector_dimension is None:
             embedding_vector_dimension = self.embedding_vector_dimension
 
-        self.load_model_if_exists(general_name=general_name,
+        self.load_model_if_exists(embedding_name=embedding_name,
                                   num_words=num_words,
                                   embedding_vector_dimension=embedding_vector_dimension,
-                                  max_text_len=max_text_len)
+                                  max_text_len=max_text_len,
+                                  data_name=data_name,
+                                  feature_name=feature_name,
+                                  target_name=target_name,
+                                  replace_exists=replace_exists
+                                  )
         self.num_words = num_words
         self.max_text_len = max_text_len
 
@@ -114,23 +151,23 @@ class Word_Embedding():
 
         # Reference: https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
         self.embedding_matrix = None
-        if "token_vector" in general_name:
+        if "token_vector" in embedding_name:
             self.logger.info("in_dim={}, out_dim={}, text_length={}".format(num_words, embedding_vector_dimension, max_text_len))
             embedding_layer = Embedding(num_words, embedding_vector_dimension, input_length=max_text_len)
 
         else:
-            # embedding_matrix = np.zeros((len(word_index) + 1, embedding_vector_dimension))
-            if embedding_vector_dimension != self.embedding_vector_dimension:
-                self.logger.error("Error, the embedding vector dimension should be {} instead of {}".format(self.embedding_vector_dimension, embedding_vector_dimension))
-                embedding_vector_dimension = self.embedding_vector_dimension
-            # Add one more dim for the bias. The bias will be the las row of the embedding matrix.
-            self.embedding_matrix = np.zeros((len(word_index) + 1, embedding_vector_dimension))
-            for word, i in word_index.items():
-                # Assign the pre-trained weight to the embedding vector.
-                embedding_vector = self.embeddings_index.get(word)
-                if embedding_vector is not None:
-                    # words not found in embedding index will be all-zeros.
-                    self.embedding_matrix[i] = embedding_vector
+            if self.embedding_matrix is None or replace_exists == True:
+                if embedding_vector_dimension != self.embedding_vector_dimension:
+                    self.logger.error("Error, the embedding vector dimension should be {} instead of {}".format(self.embedding_vector_dimension, embedding_vector_dimension))
+                    embedding_vector_dimension = self.embedding_vector_dimension
+                # Add one more dim for the bias. The bias will be the las row of the embedding matrix.
+                self.embedding_matrix = np.zeros((len(word_index) + 1, embedding_vector_dimension))
+                for word, i in word_index.items():
+                    # Assign the pre-trained weight to the embedding vector.
+                    embedding_vector = self.embeddings_index.get(word)
+                    if embedding_vector is not None:
+                        # words not found in embedding index will be all-zeros.
+                        self.embedding_matrix[i] = embedding_vector
 
             self.logger.info(
                 "in_dim={}, out_dim={}, text_length={}".format(len(word_index) + 1, embedding_vector_dimension, max_text_len))
