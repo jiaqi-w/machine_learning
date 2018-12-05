@@ -1,11 +1,13 @@
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
 import config
+from ml_algo.preprocessing.feature_processing import Feature_Processing
 from utils.file_logger import File_Logger_Helper
 from utils.pickel_helper import Pickle_Helper
-from ml_algo.feature_preprocessing import Feature_Preprocessing
-import tensorflow as tf
-import matplotlib.pyplot as plt
-import os
-import numpy as np
 
 __author__ = "Jiaqi"
 __version__ = "1"
@@ -19,7 +21,7 @@ class Training():
     def __init__(self, logger=None):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="training")
 
-        self.preprocessor = Feature_Preprocessing()
+        self.preprocessor = Feature_Processing()
 
         self.model_name = None
         self.model = None

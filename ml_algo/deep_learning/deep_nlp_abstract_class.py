@@ -67,14 +67,7 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         if embedding_fname is not None:
 
             self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname)
-            if embedding_vector_dimension != self.embedding_helper.embedding_vector_dimension:
-                self.logger.error(
-                    "Error, the embedding vector dimension should be {} instead of {}. Fix embedding_vector_dimension to {}".format(
-                        self.embedding_helper.embedding_vector_dimension,
-                        embedding_vector_dimension,
-                        self.embedding_helper.embedding_vector_dimension,
-                    ))
-
+            self.embedding_helper.check_dimension(embedding_vector_dimension)
             self.embedding_vector_dimension = self.embedding_helper.embedding_vector_dimension
             # TODO: fix me in the future
             self.embedding_name = re.sub(r"\.txt", "", os.path.basename(embedding_fname))

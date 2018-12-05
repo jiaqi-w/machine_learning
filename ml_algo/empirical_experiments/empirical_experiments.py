@@ -6,7 +6,7 @@ import pandas as pd
 
 import config
 from ml_algo.deep_learning.convolutional_neural_network.cnn_nlp_model import CNN_NLP_Model
-from ml_algo.deep_learning.convolutional_neural_network.cnn_rnn_nlp_model import CNN_RNN_NLP_Model
+from ml_algo.deep_learning.ensemble_neural_network.cnn_rnn_nlp_model import CNN_RNN_NLP_Model
 from ml_algo.deep_learning.recursive_neural_network.rnn_nlp_model import RNN_NLP_Model
 
 __author__ = "Jiaqi"
