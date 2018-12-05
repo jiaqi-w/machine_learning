@@ -52,7 +52,10 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         self.model_learning_rate = model_learning_rate
         self.model_weight_decate_rate = model_weight_decate_rate
         self.model_weight_imbalance_class = model_weight_imbalance_class
-        self.model_weight_imbalance_name = "b"
+        if model_weight_imbalance_class is True:
+            self.model_weight_imbalance_name = "b"
+        else:
+            self.model_weight_imbalance_name = None
         self.batch_size = batch_size
         self.epochs = epochs
         self.data_name = data_name
@@ -65,28 +68,26 @@ class Deep_NLP_Abstract_Class(abc.ABC):
 
         # Initial the embedding layer.
         if embedding_fname is not None:
-
-            self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname)
-            self.embedding_helper.check_dimension(embedding_vector_dimension)
-            self.embedding_vector_dimension = self.embedding_helper.embedding_vector_dimension
-            # TODO: fix me in the future
-            self.embedding_name = re.sub(r"\.txt", "", os.path.basename(embedding_fname))
+            embedding_name = re.sub(r"\.txt", "", os.path.basename(embedding_fname))
         else:
             # If the embedding is not specified, we would use the plain token vector.
-            self.embedding_helper = Word_Embedding()
-            self.embedding_vector_dimension = embedding_vector_dimension
-            self.embedding_name = "token_vector"
+            embedding_name = "token_vector"
+
+        self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname,
+                                               embedding_name=embedding_name,
+                                               num_words=num_words,
+                                               embedding_vector_dimension=embedding_vector_dimension,
+                                               max_text_len=max_text_len,
+                                               data_name=data_name,
+                                               feature_name=feature_name,
+                                               target_name=target_name,
+                                               replace_exists=False,
+                                               logger=logger
+                                               )
+        self.embedding_vector_dimension = self.embedding_helper.embedding_vector_dimension
 
         # FIXME: simplify the name stuff and move it into embedding class.
-        self.preprocessing_name = self.embedding_helper.generate_model_name(
-            embedding_name=self.embedding_name,
-            num_words=num_words,
-            embedding_vector_dimension=embedding_vector_dimension,
-            max_text_len=max_text_len,
-            data_name=data_name,
-            feature_name=feature_name,
-            target_name=target_name,
-        )
+        self.preprocessing_name = self.embedding_helper.model_name
 
         self.load_model_if_exists(classifier_name=classifier_name,
                                   preprocess_name=self.preprocessing_name,
@@ -178,18 +179,10 @@ class Deep_NLP_Abstract_Class(abc.ABC):
             self.logger.error("The self.replace_exists is False. Please make sure you don't want to store/replace the model after training. Please set self.replace_exists to true if you would prefer to replace the old model {}.".format_map(self.model_name))
             return
         # Initial the embedding layer. Don't replace the embedding since it could be shared between different models.
-        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values,
-                                                                          num_words=self.num_words,
-                                                                          embedding_vector_dimension=self.embedding_vector_dimension,
-                                                                          max_text_len=self.max_text_len,
-                                                                          embedding_name=self.embedding_name,
-                                                                          feature_name=self.feature_name,
-                                                                          target_name=self.target_name,
-                                                                          replace_exists=False
-                                                                          )
+        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values)
 
         # Pad the sequence to the same length
-        X_train = self.embedding_helper.encode_X(X_train, max_text_len=self.max_text_len)
+        X_train = self.embedding_helper.encode_X(X_train)
         y_train = self.feature_preprocessing.encode_y(y_train)
 
         if self.model == None:
@@ -218,7 +211,7 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         self.logger.info("Evalute model {}".format(self.model_name))
         # self.logger.info("X_test={}".format(X_test))
 
-        X_encode = self.embedding_helper.encode_X(X_test, max_text_len=self.max_text_len)
+        X_encode = self.embedding_helper.encode_X(X_test)
 
         y_pred = self.model.predict_classes(X_encode)
         # y_pred = self.model.predict(X_test)

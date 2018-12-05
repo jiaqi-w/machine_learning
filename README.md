@@ -13,25 +13,25 @@ Documentations: [sklearn lasso cv (cross-validation)](http://scikit-learn.org/st
 Run lasso regression:
 
 '''
-python3 lasso_regression.py -in data/lasso_data/toy_example.csv -split 0.1
+python3 lasso_regression_stub.py -in data/lasso_data/toy_example.csv -split 0.1
 '''
 
 Run lasso regression 5 cross validation:
 
 '''
-python3 lasso_regression.py -in data/lasso_data/toy_example.csv -cv 5
+python3 lasso_regression_stub.py -in data/lasso_data/toy_example.csv -cv 5
 '''
 
 With Normalization:
 
 '''
-python3 lasso_regression.py -in data/lasso_data/toy_example.csv --normalize
+python3 lasso_regression_stub.py -in data/lasso_data/toy_example.csv --normalize
 '''
 
 Convert to bool value:
 
 '''
-python3 lasso_regression.py -in data/lasso_data/toy_example.csv --bool
+python3 lasso_regression_stub.py -in data/lasso_data/toy_example.csv --bool
 '''
 
 
