@@ -78,11 +78,7 @@ class Word_Embedding():
             self.tokenizer = Pickle_Helper.load_model_from_pickle(self.dump_tokenizer_fname)
             self.embedding_matrix = Pickle_Helper.load_model_from_pickle(self.dump_embmatrix_fname)
 
-        if self.embedding_matrix is None:
-            # Only load the pretrained embedding weight when the embedding matrix is None.
-            self.init_embedding_weight_vector_dict()
-
-    def init_embedding_weight_vector_dict(self):
+    def load_embedding_weight_vector_dict(self):
         # TODO: extract this part of code and make it more general.
 
         self.embeddings_index = {}
@@ -134,8 +130,6 @@ class Word_Embedding():
         # TODO: just deal with one column
         # The simplest way to do it is to execute by columns.
 
-        self.load_init_model()
-
         if self.tokenizer is None or self.replace_exists:
             self.logger.info('New tokenizer with {} number of words.'.format(self.num_words))
             self.tokenizer = Tokenizer(num_words=self.num_words)
@@ -160,6 +154,8 @@ class Word_Embedding():
 
         else:
             if self.embedding_matrix is None or self.replace_exists == True:
+                # Only load the pretrained embedding weight when the embedding matrix is None.
+                self.load_embedding_weight_vector_dict()
                 # Add one more dim for the bias. The bias will be the las row of the embedding matrix.
                 self.embedding_matrix = np.zeros((len(word_index) + 1, self.embedding_vector_dimension))
                 for word, i in word_index.items():
@@ -169,7 +165,7 @@ class Word_Embedding():
                         # words not found in embedding index will be all-zeros.
                         self.embedding_matrix[i] = embedding_vector
                 self.logger.info("Initial embedding matrix {}".format(self.embedding_matrix))
-                print("sum matrix", np.matrix(self.embedding_matrix).sum())
+                # print("sum matrix", np.matrix(self.embedding_matrix).sum())
                 self.store_embedding_matrix(self.replace_exists)
 
             self.logger.info(

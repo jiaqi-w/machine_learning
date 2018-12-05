@@ -167,11 +167,13 @@ class Deep_NLP_Abstract_Class(abc.ABC):
             # self.model.add(Dense(self.num_class, activation='softmax', kernel_initializer='uniform'))
             # "sigmoid", ""logistic function
             self.model.add(Dense(1, activation='sigmoid', kernel_initializer=self.kernel_initializer))
-            self.model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+            # self.model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+            self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             # self.model.compile(loss='binary_crossentropy', optimizer=RMSprop(), metrics=['accuracy'])
         else:
             self.model.add(Dense(self.num_class, activation='softmax', kernel_initializer=self.kernel_initializer))
-            self.model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+            # self.model.compile(loss='categorical_crossentropy', optimizer=adam, metrics=['accuracy'])
+            self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
     def train(self, X_train:pd.Series, y_train:pd.Series):
