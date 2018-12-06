@@ -421,12 +421,13 @@ class Feature_Processing():
         # customize preprocessing for label. Inherit this method to do the converstion.
         return label_list
 
-    def encode_y(self, y:pd.Series=None):
+    def encode_y(self, y:np.ndarray=None) -> np.ndarray:
         # Used when the task is to classify discrete target.
         if y is None or len(y) == 0:
             return y
 
-        self.logger.info("distribution of y:\n{}".format(y.value_counts()))
+        unique, counts = np.unique(y, return_counts=True)
+        self.logger.info("distribution of y:\n{}".format(counts))
 
         y = self.preprocess_y(y)
         # Check whether the label is number
@@ -443,8 +444,6 @@ class Feature_Processing():
 
             # class_names = self.label_encoder.inverse_transform(label_list)
             # print(class_names)
-        else:
-            y = y.values
 
         self.logger.info("y={}".format(y))
         return y

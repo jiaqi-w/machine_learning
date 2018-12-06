@@ -47,6 +47,7 @@ class Customized_Embedding_ABC(Word_Embedding, abc.ABC):
 
         self.custom_feature_list = list(custom_feature_list)
         self.custom_feature_binary = custom_feature_binary
+        self.embedding_vector_dimension = len(self.custom_feature_list)
 
         self.load_feature_bin_vector_model()
 

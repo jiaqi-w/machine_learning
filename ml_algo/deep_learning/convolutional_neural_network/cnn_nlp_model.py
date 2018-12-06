@@ -20,9 +20,6 @@ __date__ = "Nov 1 2018"
 
 class CNN_NLP_Model(Deep_NLP_Abstract_Class):
 
-    # TODO: change this class into multi classifier
-    # TODO: create deep learning abstract model.
-
     def __init__(self,
                  classifier_name="cnn",
                  num_words=10000,
@@ -128,8 +125,6 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
         univariate_vectors = []
         for filter_size in self.keneral_size_list:
             # channel i
-            # input = Input(shape=(self.max_text_len,))
-            # embedding = self.embedding_layer(input)
             conv1d = Conv1D(filters=self.num_filter, kernel_size=filter_size, activation='relu')(embedding)
             # dropout to avoid overfitting
             drop = Dropout(self.drop_perc)(conv1d)
@@ -142,6 +137,7 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
 
         # regularization
         # dense_regularize = Dense(10, activation='relu', kernel_regularizer=regularizers.l2(self.weight_decay))(merged)
+        # TODO: tune this parameter in the future.
         num_dense_units = self.num_filter * len(self.keneral_size_list)
         if self.l2_constraint == 0:
             # dense_regularize = Dense(num_dense_units, activation='relu')(merged)
@@ -149,7 +145,5 @@ class CNN_NLP_Model(Deep_NLP_Abstract_Class):
         else:
             # dense_regularize = Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint))(merged)
             self.model.add(Dense(num_dense_units, activation='relu', kernel_constraint=max_norm(self.l2_constraint)))
-        # outputs = Dense(1, activation='sigmoid')(dense_regularize)
-        # self.model.add(Model(inputs=[input], outputs=dense_regularize))
 
 

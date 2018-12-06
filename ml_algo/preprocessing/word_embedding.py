@@ -181,7 +181,7 @@ class Word_Embedding():
         return embedding_layer
 
 
-    def encode_X(self, X:pd.Series):
+    def encode_X(self, X:np.ndarray):
         if self.tokenizer is None:
             self.logger.error("Please initial the embedding by Word_Embedding().init_embedding_layer first")
             return None

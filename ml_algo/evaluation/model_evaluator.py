@@ -18,7 +18,7 @@ __date__ = "Nov 9 2018"
 
 class Model_Evaluator():
     
-    def __init__(self, y_gold:list, y_pred:list, X_gold:pd.Series=None, logger=None):
+    def __init__(self, y_gold:list, y_pred:list, X_gold:np.ndarray=None, logger=None):
         # Please note that the list of gold and predict should have the original label when they pass in.
         self.X_gold = X_gold
         self.y_gold = y_gold

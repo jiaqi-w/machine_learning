@@ -22,8 +22,6 @@ __date__ = "Dec 5 2018"
 
 class Deep_NLP_Abstract_Class(abc.ABC):
 
-    # TODO: change this class into multi classifier
-
     def __init__(self,
                  classifier_name="nn",
                  num_words=10000,
@@ -67,27 +65,27 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         self.model = None
 
         # Initial the embedding layer.
+        self.embedding_helper = None
         if embedding_fname is not None:
-            embedding_name = re.sub(r"\.txt", "", os.path.basename(embedding_fname))
+            if ".txt" in embedding_fname:
+                embedding_name = re.sub(r"\.txt", "", os.path.basename(embedding_fname))
+            else:
+                embedding_name = embedding_fname
+
+            self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname,
+                                                   embedding_name=embedding_name,
+                                                   num_words=num_words,
+                                                   embedding_vector_dimension=embedding_vector_dimension,
+                                                   max_text_len=max_text_len,
+                                                   data_name=data_name,
+                                                   feature_name=feature_name,
+                                                   target_name=target_name,
+                                                   replace_exists=False,
+                                                   logger=logger
+                                                   )
+            self.preprocessing_name = self.embedding_helper.model_name
         else:
-            # If the embedding is not specified, we would use the plain token vector.
-            embedding_name = "token_vector"
-
-        self.embedding_helper = Word_Embedding(embedding_fname=embedding_fname,
-                                               embedding_name=embedding_name,
-                                               num_words=num_words,
-                                               embedding_vector_dimension=embedding_vector_dimension,
-                                               max_text_len=max_text_len,
-                                               data_name=data_name,
-                                               feature_name=feature_name,
-                                               target_name=target_name,
-                                               replace_exists=False,
-                                               logger=logger
-                                               )
-        self.embedding_vector_dimension = self.embedding_helper.embedding_vector_dimension
-
-        # FIXME: simplify the name stuff and move it into embedding class.
-        self.preprocessing_name = self.embedding_helper.model_name
+            self.preprocessing_name = "{}_{}_{}".format(data_name, feature_name, target_name)
 
         self.load_model_if_exists(classifier_name=classifier_name,
                                   preprocess_name=self.preprocessing_name,
@@ -176,15 +174,16 @@ class Deep_NLP_Abstract_Class(abc.ABC):
             self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
-    def train(self, X_train:pd.Series, y_train:pd.Series):
+    def train(self, X_train:np.ndarray, y_train:np.ndarray):
         if self.replace_exists == False and self.model is None:
             self.logger.error("The self.replace_exists is False. Please make sure you don't want to store/replace the model after training. Please set self.replace_exists to true if you would prefer to replace the old model {}.".format_map(self.model_name))
             return
         # Initial the embedding layer. Don't replace the embedding since it could be shared between different models.
-        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values)
+        if self.embedding_helper is not None:
+            self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train)
+            # Pad the sequence to the same length
+            X_train = self.embedding_helper.encode_X(X_train)
 
-        # Pad the sequence to the same length
-        X_train = self.embedding_helper.encode_X(X_train)
         y_train = self.feature_preprocessing.encode_y(y_train)
 
         if self.model == None:
@@ -206,14 +205,17 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         else:
             self.logger.info("Trained model {}".format(self.model_name))
 
-    def evaluate_model(self, X_test:pd.Series, y_test:pd.Series, output_evaluate_dir=config.EVALUATE_DATA_DIR):
+    def evaluate_model(self, X_test:np.ndarray, y_test:np.ndarray, output_evaluate_dir=config.EVALUATE_DATA_DIR):
         if self.model == None:
             self.logger.error("Please train the model first. There is no model for {}".format(self.model_name))
             return
         self.logger.info("Evalute model {}".format(self.model_name))
         # self.logger.info("X_test={}".format(X_test))
 
-        X_encode = self.embedding_helper.encode_X(X_test)
+        if self.embedding_helper is not None:
+            X_encode = self.embedding_helper.encode_X(X_test)
+        else:
+            X_encode = X_test
 
         y_pred = self.model.predict_classes(X_encode)
         # y_pred = self.model.predict(X_test)
@@ -223,7 +225,7 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
 
-        model_evaluator = Model_Evaluator(y_gold=y_test.tolist(), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
+        model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
 
         fieldnames = model_evaluator.get_evaluation_fieldnames()
 

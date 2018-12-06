@@ -34,7 +34,6 @@ __date__ = "Nov 31 2018"
 
 class CNN_RNN_NLP_Model(Deep_NLP_Abstract_Class):
 
-    # TODO: change this class into multi classifier
     # add more cnn layers
 
     def __init__(self,
