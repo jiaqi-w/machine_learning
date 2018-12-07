@@ -421,29 +421,31 @@ class Feature_Processing():
         # customize preprocessing for label. Inherit this method to do the converstion.
         return label_list
 
-    def encode_y(self, y:np.ndarray=None) -> np.ndarray:
+    def encode_y(self, y:pd.Series) -> np.ndarray:
         # Used when the task is to classify discrete target.
-        if y is None or len(y) == 0:
-            return y
+        if y is not None:
+            if len(y) > 0:
+                unique, counts = np.unique(y, return_counts=True)
+                self.logger.info("distribution of y:\n{}".format(counts))
 
-        unique, counts = np.unique(y, return_counts=True)
-        self.logger.info("distribution of y:\n{}".format(counts))
+                y = self.preprocess_y(y)
+                # Check whether the label is number
+                is_num = False
 
-        y = self.preprocess_y(y)
-        # Check whether the label is number
-        is_num = False
+                if np.issubdtype(y.dtype, np.number):
+                    is_num = True
 
-        if np.issubdtype(y.dtype, np.number):
-            is_num = True
+                if is_num is False:
+                    if self.label_encoder is None:
+                        self.label_encoder = LabelEncoder()
+                    y = self.label_encoder.fit_transform(y)
+                    # y = self.label_encoder.fit_transform(y.ravel())
 
-        if is_num is False:
-            if self.label_encoder is None:
-                self.label_encoder = LabelEncoder()
-            y = self.label_encoder.fit_transform(y)
-            # y = self.label_encoder.fit_transform(y.ravel())
+                    # class_names = self.label_encoder.inverse_transform(label_list)
+                    # print(class_names)
 
-            # class_names = self.label_encoder.inverse_transform(label_list)
-            # print(class_names)
+            if not isinstance(y, np.ndarray):
+                y = y.values
 
         self.logger.info("y={}".format(y))
         return y

@@ -124,10 +124,10 @@ class RNN_NLP_Model(Deep_NLP_Abstract_Class):
             self.logger.error("Please initial the LSTM with at lest one layer {}".format(self.num_lstm_layer))
 
         for i in range(1, self.num_lstm_layer):
-            self.model.add(LSTM(self.embedding_vector_dimension, return_sequences=True, dropout=self.drop_perc))
+            self.model.add(LSTM(self.embedding_helper.embedding_vector_dimension, return_sequences=True, dropout=self.drop_perc))
 
         # Do we want to add the drop out in this layer?
-        self.model.add(LSTM(self.embedding_vector_dimension))
+        self.model.add(LSTM(self.embedding_helper.embedding_vector_dimension))
 
         # # 256
         # self.model.add(Dense(256, activation='relu', name='FC1'))

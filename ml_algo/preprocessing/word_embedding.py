@@ -126,7 +126,7 @@ class Word_Embedding():
         embedding_vector = self.embeddings_index.get(word)
         return embedding_vector
 
-    def init_embedding_layer(self, X:np.ndarray):
+    def init_embedding_layer(self, X:pd.Series):
         # TODO: just deal with one column
         # The simplest way to do it is to execute by columns.
 
@@ -150,7 +150,8 @@ class Word_Embedding():
                                                                             self.max_text_len))
             embedding_layer = Embedding(self.num_words,
                                         self.embedding_vector_dimension,
-                                        input_length=self.max_text_len)
+                                        input_length=self.max_text_len
+                                        )
 
         else:
             if self.embedding_matrix is None or self.replace_exists == True:
@@ -181,16 +182,38 @@ class Word_Embedding():
         return embedding_layer
 
 
-    def encode_X(self, X:np.ndarray):
+    def __call__(self):
+        # return more embedding layer
+
+        if self.tokenizer is None:
+            self.logger.info('Please call the init_embedding_layer first.')
+
+        # Reference: https://blog.keras.io/using-pre-trained-word-embeddings-in-a-keras-model.html
+        if "token_vector" in self.embedding_name:
+            embedding_layer = Embedding(self.num_words,
+                                        self.embedding_vector_dimension,
+                                        input_length=self.max_text_len,
+                                        )
+
+        else:
+            embedding_layer = Embedding(len(self.tokenizer.word_index) + 1,
+                                        self.embedding_vector_dimension,
+                                        weights=[self.embedding_matrix],
+                                        input_length=self.max_text_len,
+                                        trainable=False)
+
+        return embedding_layer
+
+
+    def encode_X(self, X:pd.Series):
         if self.tokenizer is None:
             self.logger.error("Please initial the embedding by Word_Embedding().init_embedding_layer first")
             return None
 
-        self.logger.info("X.head={}".format(X.head(5)))
+        # self.logger.info("X.head={}".format(X.head(5)))
         X = self.tokenizer.texts_to_sequences(X)
         self.logger.info("sequance X {}".format(X))
-        max_text_len = self.max_text_len
-        X = sequence.pad_sequences(X, maxlen=max_text_len)
+        X = sequence.pad_sequences(X, maxlen=self.max_text_len)
         self.logger.info("padding X {}".format(X))
         return X
 

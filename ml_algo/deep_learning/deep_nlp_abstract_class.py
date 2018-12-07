@@ -10,6 +10,7 @@ from keras.optimizers import Adam
 from keras.layers import Dense
 from keras.models import load_model
 import pandas as pd
+from sklearn.utils import compute_class_weight
 
 from ml_algo.preprocessing.feature_processing import Feature_Processing
 from ml_algo.preprocessing.word_embedding import Word_Embedding
@@ -156,7 +157,6 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         self.model = Sequential()
 
     def configure_nn_learning_process(self):
-        # TODO implement this method
         # adam = Adam(lr=self.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
         adam = Adam(lr=self.model_learning_rate, decay=self.model_weight_decate_rate)
         if self.num_class == 1:
@@ -164,6 +164,7 @@ class Deep_NLP_Abstract_Class(abc.ABC):
             # samples are drawn from a uniform distribution within [-limit, limit], with limit = sqrt(3 * scale / n)
             # self.model.add(Dense(self.num_class, activation='softmax', kernel_initializer='uniform'))
             # "sigmoid", ""logistic function
+            # And add a logistic regression on top.
             self.model.add(Dense(1, activation='sigmoid', kernel_initializer=self.kernel_initializer))
             # self.model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
             self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -174,15 +175,27 @@ class Deep_NLP_Abstract_Class(abc.ABC):
             self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     # Reference: "A Sensitivity Analysis of (and Practitioners’ Guide to) Convolutional Neural Networks for Sentence Classification"
-    def train(self, X_train:np.ndarray, y_train:np.ndarray):
+    def train(self, X_text:pd.Series, y_train:pd.Series, X_features:pd.Series=None):
         if self.replace_exists == False and self.model is None:
             self.logger.error("The self.replace_exists is False. Please make sure you don't want to store/replace the model after training. Please set self.replace_exists to true if you would prefer to replace the old model {}.".format_map(self.model_name))
             return
         # Initial the embedding layer. Don't replace the embedding since it could be shared between different models.
         if self.embedding_helper is not None:
-            self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train)
+            self.embedding_layer = self.embedding_helper.init_embedding_layer(X_text)
             # Pad the sequence to the same length
-            X_train = self.embedding_helper.encode_X(X_train)
+            X_text = self.embedding_helper.encode_X(X_text)
+
+        if X_features is not None and X_features.shape[1] > 0:
+            # Merge the features
+            X_features = X_features.values
+            self.logger.info("X_text shape {}".format(X_text.shape))
+            self.logger.info("X_features shape {}".format(X_features.shape))
+            self.logger.info("X_features type {}".format(type(X_features)))
+
+            X_train = {"text_input" : X_text, "feature_input": X_features}
+            self.logger.info("Concatenate features X_train {}".format(X_train))
+        else:
+            X_train = X_text
 
         y_train = self.feature_preprocessing.encode_y(y_train)
 
@@ -197,15 +210,23 @@ class Deep_NLP_Abstract_Class(abc.ABC):
             # Log to tensorboard
             tensorBoardCallback = TensorBoard(log_dir=config.LOG_DIR, write_graph=True)
 
-            self.logger.info("X_train={}".format(X_train))
+            self.logger.info("X_train={}".format(X_text))
             self.logger.info("y_train={}".format(y_train))
             # batch_size https://keras.io/getting-started/sequential-model-guide/
-            self.model.fit(X_train, y_train, batch_size=self.batch_size, epochs=self.epochs, callbacks=[tensorBoardCallback])
+            if self.model_weight_imbalance_class:
+                class_weight = compute_class_weight('balanced', np.unique(y_train), y_train)
+            else:
+                class_weight = None
+            self.model.fit(X_train, y_train, class_weight=class_weight,
+                           batch_size=self.batch_size, epochs=self.epochs,
+                           callbacks=[tensorBoardCallback])
             self.store_model()
         else:
             self.logger.info("Trained model {}".format(self.model_name))
 
-    def evaluate_model(self, X_test:np.ndarray, y_test:np.ndarray, output_evaluate_dir=config.EVALUATE_DATA_DIR):
+    def evaluate_model(self, X_text_test:pd.Series, y_test:pd.Series,
+                       X_feature_test:pd.Series=None,
+                       output_evaluate_dir=config.EVALUATE_DATA_DIR):
         if self.model == None:
             self.logger.error("Please train the model first. There is no model for {}".format(self.model_name))
             return
@@ -213,19 +234,24 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         # self.logger.info("X_test={}".format(X_test))
 
         if self.embedding_helper is not None:
-            X_encode = self.embedding_helper.encode_X(X_test)
+            X_encode = self.embedding_helper.encode_X(X_text_test)
         else:
-            X_encode = X_test
+            X_encode = X_text_test
+
+        if X_feature_test is not None and X_feature_test.shape[1] > 0:
+            # Merge the features
+            X_encode = [X_encode, X_feature_test]
 
         y_pred = self.model.predict_classes(X_encode)
         # y_pred = self.model.predict(X_test)
         # y_pred = y_pred.argmax(axis=-1)
+
         self.logger.info("y_pred {}".format(y_pred))
 
         y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
 
-        model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
+        model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=y_pred.flatten().tolist(), X_gold=X_text_test)
 
         fieldnames = model_evaluator.get_evaluation_fieldnames()
 

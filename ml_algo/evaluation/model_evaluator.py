@@ -11,6 +11,8 @@ import csv
 from sklearn import metrics
 from utils.file_logger import File_Logger_Helper
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import auc
 
 __author__ = "Jiaqi"
 __version__ = "1"
@@ -18,7 +20,7 @@ __date__ = "Nov 9 2018"
 
 class Model_Evaluator():
     
-    def __init__(self, y_gold:list, y_pred:list, X_gold:np.ndarray=None, logger=None):
+    def __init__(self, y_gold:list, y_pred:list, X_gold:pd.Series=None, logger=None):
         # Please note that the list of gold and predict should have the original label when they pass in.
         self.X_gold = X_gold
         self.y_gold = y_gold
@@ -31,7 +33,7 @@ class Model_Evaluator():
         for class_name in self.class_names:
             # evaluation metric header
             fieldnames += ["{}_prec".format(class_name), "{}_recall".format(class_name), "{}_f1".format(class_name)]
-        fieldnames += ['accuracy',
+        fieldnames += ['accuracy', 'roc_auc',
                        'macro_prec', 'macro_recall', 'macro_f1',
                        'micro_prec', 'micro_recall', 'micro_f1',
                        "weighted_prec", "weighted_recall", "weighted_f1"]
@@ -55,8 +57,18 @@ class Model_Evaluator():
         # TODO: save the evaluation results in the future.
         metric_dict = {}
 
+        # Compute Area Under the Curve (AUC) using the trapezoidal rule
+        fpr, tpr, thresholds = metrics.roc_curve(self.y_gold, self.y_pred, pos_label=2)
+        print("auc", metrics.auc(fpr, tpr))
+
+        # default average='macro'
+        roc_auc = roc_auc_score(self.y_gold, self.y_pred)
+        metric_dict["roc_auc"] = round(roc_auc, 4)
+        self.logger.info("roc_auc={}".format(round(roc_auc, 4)))
+
         accuracy = accuracy_score(self.y_gold, self.y_pred)
         metric_dict["accuracy"] = round(accuracy, 4)
+        self.logger.info("accuracy={}".format(round(accuracy, 4)))
 
         precision, recall, F1, support = precision_recall_fscore_support(self.y_gold, self.y_pred, average='macro')
         metric_dict["macro_prec"] = round(precision, 4)

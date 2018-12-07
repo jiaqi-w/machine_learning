@@ -175,5 +175,5 @@ class CNN_RNN_NLP_Model(Deep_NLP_Abstract_Class):
         self.model.add(self.embedding_layer)
         self.model.add(Conv1D(self.num_filter, self.keneral_size, activation='relu'))
         self.model.add(MaxPooling1D(pool_size=self.pool_size))
-        self.model.add(LSTM(self.embedding_vector_dimension))
+        self.model.add(LSTM(self.embedding_helper.embedding_vector_dimension))
         self.model.add(Dropout(self.drop_perc))

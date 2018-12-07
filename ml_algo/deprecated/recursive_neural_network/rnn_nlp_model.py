@@ -160,16 +160,10 @@ class RNN_NLP_Model():
         Dialogue Act Classification in Domain-Independent Conversations Using a Deep Recurrent Neural Network
         """
         # Initial the embedding layer. Don't replace the embedding.
-        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values,
-                                                                          num_words=self.num_words,
-                                                                          embedding_vector_dimension=self.embedding_vector_dimension,
-                                                                          max_text_len=self.num_steps,
-                                                                          embedding_name=self.embedding_name,
-                                                                          replace_exists=False
-                                                                          )
+        self.embedding_layer = self.embedding_helper.init_embedding_layer(X_train.values)
 
         # Pad the sequence to the same length
-        X_train = self.embedding_helper.encode_X(X_train, max_text_len=self.num_steps)
+        X_train = self.embedding_helper.encode_X(X_train)
         # if isinstance(y_train[0], str):
         y_train = self.feature_preprocessing.encode_y(y_train)
 
@@ -232,7 +226,7 @@ class RNN_NLP_Model():
         self.logger.info("Evalute model {}".format(self.model_name))
         # self.logger.info("X_test={}".format(X_test))
 
-        X_encode = self.embedding_helper.encode_X(X_test, max_text_len=self.num_steps)
+        X_encode = self.embedding_helper.encode_X(X_test)
 
         # accuracy
         # scores = self.model.evaluate(X_test, y_test, verbose=0)
@@ -246,7 +240,7 @@ class RNN_NLP_Model():
         y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
 
-        model_evaluator = Model_Evaluator(y_gold=y_test.tolist(), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
+        model_evaluator = Model_Evaluator(y_gold=list(y_test.tolist()), y_pred=y_pred.flatten().tolist(), X_gold=X_test)
 
         fieldnames = model_evaluator.get_evaluation_fieldnames()
 
