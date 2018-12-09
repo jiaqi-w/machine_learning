@@ -26,7 +26,7 @@ class Model_Evaluator():
         self.y_gold = y_gold
         self.y_pred = y_pred
         self.class_names = list(set(self.y_gold + self.y_pred))
-        self.logger = logger or File_Logger_Helper.get_logger(logger_fname="CNN.log")
+        self.logger = logger or File_Logger_Helper.get_logger(logger_fname="evaluate.log")
 
     def get_evaluation_fieldnames(self, with_cm=True):
         fieldnames = []

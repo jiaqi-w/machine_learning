@@ -432,7 +432,7 @@ class Feature_Processing():
                 # Check whether the label is number
                 is_num = False
 
-                if np.issubdtype(y.dtype, np.number):
+                if np.issubdtype(y.values.dtype, np.number):
                     is_num = True
 
                 if is_num is False:

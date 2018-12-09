@@ -133,9 +133,8 @@ class Word_Embedding():
         if self.tokenizer is None or self.replace_exists:
             self.logger.info('New tokenizer with {} number of words.'.format(self.num_words))
             self.tokenizer = Tokenizer(num_words=self.num_words)
-            self.tokenizer.fit_on_texts(X.ravel())
+            self.tokenizer.fit_on_texts(X.values.ravel())
             self.store_tokenzier(replace_exists=self.replace_exists)
-            # self.tokenizer.fit_on_texts(X.values.ravel())
         self.logger.info('Tokenizer:\n {}'.format(self.tokenizer))
 
         word_index = self.tokenizer.word_index
@@ -210,7 +209,10 @@ class Word_Embedding():
             self.logger.error("Please initial the embedding by Word_Embedding().init_embedding_layer first")
             return None
 
-        # self.logger.info("X.head={}".format(X.head(5)))
+        self.logger.info("X.head={}".format(X.head(5)))
+        self.logger.info("X.shape={}".format(X.shape))
+        self.logger.info("X.values.shape={}".format(X.values.shape))
+        X = X.values.ravel()
         X = self.tokenizer.texts_to_sequences(X)
         self.logger.info("sequance X {}".format(X))
         X = sequence.pad_sequences(X, maxlen=self.max_text_len)
