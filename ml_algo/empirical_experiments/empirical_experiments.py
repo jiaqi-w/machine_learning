@@ -67,11 +67,15 @@ class Empricial_Experiment:
 
     def run_cv(self, replace_exists=False):
 
+        feature_name = ".".join(self.feature_name)
+        if len(self.feature_name) > 3:
+            feature_name = "{}f".format(len(self.feature_name))
+
         for target in self.target_name_list:
             self.logger.info("Train for target '{}'".format(target))
             data_preprocessing = Data_Preprocessing(
                 data_name=self.data_name,
-                feature_name=".".join(self.feature_name),
+                feature_name=feature_name,
                 target_name=target,
                 num_crossvalidation=10,
                 random_state=312018,
@@ -626,10 +630,13 @@ class Empricial_Experiment:
                            X_text_test:pd.Series, X_feature_test:pd.Series, predict_dir, predict_name
                            ):
 
+        feature_name = ".".join(self.feature_name)
+        if len(self.feature_name) > 3:
+            feature_name = "{}f".format(len(self.feature_name))
         for target in self.target_name_list:
             data_preprocessing = Data_Preprocessing(
                 data_name=self.data_name,
-                feature_name=".".join(self.feature_name),
+                feature_name=feature_name,
                 target_name=target,
                 num_crossvalidation=10,
                 random_state=312018,
@@ -711,25 +718,25 @@ class Empricial_Experiment:
                                             y_pseudo=y_pseudo
                                 )
 
-            with open(new_cv_evaluate_file, 'r') as new_cv_evaluate_file:
-                csv_reader = csv.DictReader(new_cv_evaluate_file)
-                for row in csv_reader:
-                    for j in range(self.num_crossvalidation):
-                        # MUST MUST notice that the replace is False since we don't want to replace the best model!!
-                        model = self.get_model(row["classifier_name"], row, row["data_name"], replace_exists=False)
-
-                        self.logger.info("Best model {}".format(model.model_name))
-                        y_pred = model.predict_y(X_text_pred=X_text_test,
-                                                 X_feature_pred=X_feature_test
-                                                 )
-                        output_fname = os.path.join(predict_dir,
-                                                    "{}_{}.csv".format(predict_name, model.model_name))
-                        df = pd.DataFrame()
-                        df.append(X_text_unlabled)
-                        df.append(X_feature_unlabled)
-                        df["predict_{}".format(target)] = y_pred
-                        df.to_csv(output_fname)
-                        self.logger.info("Output result to {}".format(output_fname))
+                # with open(new_cv_evaluate_fname, 'r') as new_cv_evaluate_file:
+                #     csv_reader = csv.DictReader(new_cv_evaluate_file)
+                #     for row in csv_reader:
+                #         for j in range(self.num_crossvalidation):
+                #             # MUST MUST notice that the replace is False since we don't want to replace the best model!!
+                #             model = self.get_model(row["classifier_name"], row, row["data_name"], replace_exists=False)
+                #
+                #             self.logger.info("Best model {}".format(model.model_name))
+                #             y_pred = model.predict_y(X_text_pred=X_text_test,
+                #                                      X_feature_pred=X_feature_test
+                #                                      )
+                #             output_fname = os.path.join(predict_dir,
+                #                                         "{}_{}.csv".format(predict_name, model.model_name))
+                #             df = pd.DataFrame()
+                #             df = df.add(X_text_unlabled)
+                #             df = df.add(X_feature_unlabled)
+                #             df = df.add(pd.DataFrame(y_pred, columns=["predict_{}".format(target)]))
+                #             df.to_csv(output_fname)
+                #             self.logger.info("Output result to {}".format(output_fname))
 
 
 

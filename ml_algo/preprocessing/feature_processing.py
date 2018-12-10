@@ -11,6 +11,8 @@ from os.path import basename
 import pandas as pd
 from collections import Counter
 
+from ml_algo.preprocessing.data_preprocessing import Data_Preprocessing
+
 import config
 from utils.file_logger import File_Logger_Helper
 from utils.pickel_helper import Pickle_Helper
@@ -32,6 +34,21 @@ __date__ = "Oct 24 2018"
 class Feature_Processing():
 
     def __init__(self,
+                 unique_name="feature_preprocess",
+                 is_sparse:bool=True,
+                 standardize:bool=False,
+                 one_hot_encode:bool=False,
+                 convert_bool:bool=False,
+                 convert_row_percentage:bool=False,
+                 normalize_text:bool=True,
+                 use_stem:bool=False,
+                 min_tokens: int = None,
+                 bag_of_word:bool=False,
+                 max_token_number: int = None,
+                 counter_ngram: int = None,
+                 embedding:bool=False,
+                 sentence_size_percentage: float = 1,
+                 min_word_freq:int=1,
                  data_name="data",
                  feature_name="f1.f2",
                  target_name="t",
@@ -40,6 +57,22 @@ class Feature_Processing():
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="preprocessing")
 
         self.stemmer = SnowballStemmer('english')
+
+        self.unique_name = unique_name
+        self.is_sparse = is_sparse
+        self.standardize = standardize
+        self.one_hot_encode = one_hot_encode
+        self.convert_bool = convert_bool
+        self.convert_row_percentage = convert_row_percentage
+        self.normalize_text = normalize_text
+        self.use_stem = use_stem
+        self.min_tokens: int = min_tokens
+        self.bag_of_word = bag_of_word
+        self.max_token_number = max_token_number
+        self.counter_ngram = counter_ngram
+        self.embedding = embedding
+        self.sentence_size_percentage: float = sentence_size_percentage
+        self.min_word_freq = 1,
 
         # Fixme: we should use dictionary to save the features to vector
         self.standard_scaler = None
@@ -51,55 +84,46 @@ class Feature_Processing():
 
         self.replace_exists = replace_exists
 
+        self.load_model_if_exists()
+
         # TODO: FIX ME in the future...........
         # self.data_lable_name = "fp_{}_{}_{}".format(data_name, feature_name, target_name)
         self.data_lable_name = "fp_yes_no".format(data_name, feature_name, target_name)
         self.load_label_model()
 
-    def generate_model_name(self, in_fname,
-                            is_sparse=True,
-                            standardize=False,
-                            one_hot_encode=False,
-                            convert_bool=False,
-                            convert_row_percentage=False,
-                            normalize_text=True,
-                            use_stem=False,
-                            min_tokens:int=None,
-                            bag_of_word=False,
-                            max_token_number:int=None,
-                            counter_ngram:int=None,
-                            embedding=False, sentence_size_percentage:float=1, min_word_freq=1):
 
-        self.model_name = self.data_lable_name
-        if in_fname is not None:
-            self.model_name = re.sub(r"\.\w+$", "", basename(in_fname))
+    def generate_model_name(self):
 
-        if is_sparse:
+        self.model_name = self.unique_name
+        if self.unique_name is not None:
+            self.model_name = re.sub(r"\.\w+$", "", basename(self.unique_name))
+
+        if self.is_sparse:
             self.model_name += "_spr"
-        if standardize:
+        if self.standardize:
             self.model_name += "_std"
-        if convert_bool:
+        if self.convert_bool:
             self.model_name += "_bool"
-        if convert_row_percentage:
+        if self.convert_row_percentage:
             self.model_name += "_rpct"
-        if normalize_text:
+        if self.normalize_text:
             self.model_name += "_ntext"
-        if use_stem:
+        if self.use_stem:
             self.model_name += "_stem"
-        if min_tokens:
-            self.model_name += "_mint{}".format(min_tokens)
-        if bag_of_word:
+        if self.min_tokens:
+            self.model_name += "_mint{}".format(self.min_tokens)
+        if self.bag_of_word:
             self.model_name += "_bow"
-        if max_token_number:
-            self.model_name += "_tfidf{}".format(max_token_number)
-        if counter_ngram is not None:
-            self.model_name += "_n{}".format(counter_ngram)
-        if embedding:
+        if self.max_token_number:
+            self.model_name += "_tfidf{}".format(self.max_token_number)
+        if self.counter_ngram is not None:
+            self.model_name += "_n{}".format(self.counter_ngram)
+        if self.embedding:
             self.model_name += "_embd"
-        if sentence_size_percentage:
-            self.model_name += "_senlenth{}".format(round(sentence_size_percentage,2))
-        if min_word_freq:
-            self.model_name += "_minfreq{}".format(min_word_freq)
+        if self.sentence_size_percentage:
+            self.model_name += "_senlenth{}".format(round(self.sentence_size_percentage,2))
+        if self.min_word_freq:
+            self.model_name += "_minfreq{}".format(self.min_word_freq)
 
         self.logger.info("model_name={}".format(self.model_name))
 
@@ -114,41 +138,14 @@ class Feature_Processing():
         self.label_encoder = Pickle_Helper.load_model_from_pickle(self.dump_label_encoder_fname)
         print("load label", self.dump_label_encoder_fname)
 
-    def load_model_if_exists(self,
-                                   in_fname,
-                                   is_sparse=True,
-                                   standardize=False,
-                                   one_hot_encode=False,
-                                   convert_bool=False,
-                                   convert_row_percentage=False,
-                                   normalize_text=True,
-                                   use_stem=False,
-                                   min_tokens: int = None,
-                                   bag_of_word=False,
-                                   max_token_number: int = None,
-                                   counter_ngram: int = None,
-                                   embedding=False, sentence_size_percentage: float = 1, min_word_freq=1,
-                                   dump_model_dir=config.PREROCESS_PICKLES_DIR):
+    def load_model_if_exists(self, dump_model_dir=config.PREROCESS_PICKLES_DIR):
 
         # Load the file is not already done so. If there is no pickle created, train one for it.
         self.dump_model_dir = dump_model_dir
         if not os.path.exists(dump_model_dir):
             os.makedirs(dump_model_dir)
 
-        self.generate_model_name(in_fname=in_fname,
-                                 is_sparse=is_sparse,
-                                 standardize=standardize,
-                                 one_hot_encode=one_hot_encode,
-                                 convert_bool=convert_bool,
-                                 convert_row_percentage=convert_row_percentage,
-                                 normalize_text=normalize_text,
-                                 use_stem=use_stem,
-                                 min_tokens=min_tokens,
-                                 bag_of_word=bag_of_word,
-                                 max_token_number=max_token_number,
-                                 counter_ngram=counter_ngram,
-                                 embedding=embedding, sentence_size_percentage=sentence_size_percentage,
-                                 min_word_freq=min_word_freq)
+        self.generate_model_name()
 
         self.dump_standard_scaler_fname = os.path.join(dump_model_dir,
                                                        "{}_standard_scaler.pickle".format(self.model_name))
@@ -156,44 +153,16 @@ class Feature_Processing():
                                                       "{}_onehot_encoder.pickle".format(self.model_name))
         self.dump_dictionary_fname = os.path.join(dump_model_dir, "{}_dictionary.pickle".format(self.model_name))
         self.dump_counter_vec_fname = os.path.join(dump_model_dir, "{}_countvec.pickle".format(self.model_name))
-        self.dump_label_encoder_fname = os.path.join(dump_model_dir, "{}_label.pickle".format(self.model_name))
+        # self.dump_label_encoder_fname = os.path.join(dump_model_dir, "{}_label.pickle".format(self.model_name))
         self.dump_vocab_processor_fname = os.path.join(dump_model_dir, "{}_embedding.pickle".format(self.model_name))
 
-        self.standard_scaler = Pickle_Helper.load_model_from_pickle(self.dump_standard_scaler_fname)
-        self.one_hot_encoder = Pickle_Helper.load_model_from_pickle(self.dump_one_hot_encode_fname)
-        self.dictionary = Pickle_Helper.load_model_from_pickle(self.dump_dictionary_fname)
-        self.counter_vector = Pickle_Helper.load_model_from_pickle(self.dump_counter_vec_fname)
-        self.label_encoder = Pickle_Helper.load_model_from_pickle(self.dump_label_encoder_fname)
-        self.vocab_processor = Pickle_Helper.load_model_from_pickle(self.dump_vocab_processor_fname)
-
-        self.generate_model_name(in_fname=in_fname,
-                                 is_sparse=is_sparse,
-                                 standardize=standardize,
-                                 one_hot_encode=one_hot_encode,
-                                 convert_bool=convert_bool,
-                                 convert_row_percentage=convert_row_percentage,
-                                 normalize_text=normalize_text,
-                                 use_stem=use_stem,
-                                 min_tokens=min_tokens,
-                                 bag_of_word=bag_of_word,
-                                 max_token_number=max_token_number,
-                                 counter_ngram=counter_ngram,
-                                 embedding=embedding, sentence_size_percentage=sentence_size_percentage,
-                                 min_word_freq=min_word_freq)
-
-        self.dump_standard_scaler_fname = os.path.join(dump_model_dir, "{}_standard_scaler.pickle".format(self.model_name))
-        self.dump_one_hot_encode_fname = os.path.join(dump_model_dir, "{}_onehot_encoder.pickle".format(self.model_name))
-        self.dump_dictionary_fname = os.path.join(dump_model_dir, "{}_dictionary.pickle".format(self.model_name))
-        self.dump_counter_vec_fname = os.path.join(dump_model_dir, "{}_countvec.pickle".format(self.model_name))
-        self.dump_label_encoder_fname = os.path.join(dump_model_dir, "{}_label.pickle".format(self.model_name))
-        self.dump_vocab_processor_fname = os.path.join(dump_model_dir, "{}_embedding.pickle".format(self.model_name))
-
-        self.standard_scaler = Pickle_Helper.load_model_from_pickle(self.dump_standard_scaler_fname)
-        self.one_hot_encoder = Pickle_Helper.load_model_from_pickle(self.dump_one_hot_encode_fname)
-        self.dictionary = Pickle_Helper.load_model_from_pickle(self.dump_dictionary_fname)
-        self.counter_vector = Pickle_Helper.load_model_from_pickle(self.dump_counter_vec_fname)
-        self.label_encoder = Pickle_Helper.load_model_from_pickle(self.dump_label_encoder_fname)
-        self.vocab_processor = Pickle_Helper.load_model_from_pickle(self.dump_vocab_processor_fname)
+        if self.replace_exists is not True:
+            self.standard_scaler = Pickle_Helper.load_model_from_pickle(self.dump_standard_scaler_fname)
+            self.one_hot_encoder = Pickle_Helper.load_model_from_pickle(self.dump_one_hot_encode_fname)
+            self.dictionary = Pickle_Helper.load_model_from_pickle(self.dump_dictionary_fname)
+            self.counter_vector = Pickle_Helper.load_model_from_pickle(self.dump_counter_vec_fname)
+            # self.label_encoder = Pickle_Helper.load_model_from_pickle(self.dump_label_encoder_fname)
+            self.vocab_processor = Pickle_Helper.load_model_from_pickle(self.dump_vocab_processor_fname)
 
     def store_model(self, replace_exists=False):
         if not os.path.exists(self.dump_standard_scaler_fname) or replace_exists is True:
@@ -220,24 +189,6 @@ class Feature_Processing():
             if self.label_encoder is not None:
                 Pickle_Helper.save_model_to_pickle(self.label_encoder, self.dump_label_encoder_fname)
 
-    def get_X_y_featurenames_from_file(self, filename, drop_colnames:list=None, label_colname="label"):
-        # TODO: Add Data_Preprocessing for data filtering.
-        self.logger.info("Read file {}".format(filename))
-        df = pd.read_csv(filename)
-        if drop_colnames is not None:
-            df = df.drop(drop_colnames, axis=1)
-
-        # Get the features.
-        X = df.drop(label_colname, axis=1)
-
-        # Get the label.
-        # y = df[[label_colname]]
-        y = df[label_colname]
-
-        # # Get the header of the features.
-        # feature_names = X.columns.values.tolist()
-
-        return X, y
 
     def get_text_length_for_embedding(self, X_col, text_length_percentage:float=1, show_plot=False):
         # TODO: We might want to have varying sentence lenghth in the future.
@@ -277,10 +228,10 @@ class Feature_Processing():
     def normalize_text_row(self, text_row, use_stem):
         norm_text_row = []
         for text in text_row:
-            norm_text_row.append(self.normalize_text(text, use_stem=use_stem))
+            norm_text_row.append(self.normalize_text_fun(text, use_stem=use_stem))
         return norm_text_row
 
-    def normalize_text(self, text, use_stem):
+    def normalize_text_fun(self, text, use_stem):
         norm_text = None
         if text is not None:
             text = text.lower()
@@ -322,7 +273,7 @@ class Feature_Processing():
 
             # For single column.
             X = X.fillna('')
-            X = X.apply(lambda x : self.normalize_text(x, use_stem=use_stem))
+            X = X.apply(lambda x : self.normalize_text_fun(x, use_stem=use_stem))
 
         if min_tokens is not None:
             # Filter out the data has fewer tokens than min_tokens.
@@ -332,21 +283,7 @@ class Feature_Processing():
 
         return X
 
-    def encode_X(self, X,
-                 is_sparse=True,
-                 standardize=False,
-                 one_hot_encode=False,
-                 convert_bool=False,
-                 convert_row_percentage=False,
-                 normalize_text=True,
-                 use_stem=False,
-                 min_tokens:int=None,
-                 bag_of_word=False,
-                 max_token_number:int=None,
-                 counter_ngram:int=None,
-                 embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
-                 show_plot=False,
-                 replace_exists=False):
+    def encode_X(self, X:pd.Series, show_plot=False):
         # The simplest way to do it is to execute by columns.
         feature_coomatrix_columns = []
         feature_names = []
@@ -356,26 +293,26 @@ class Feature_Processing():
             self.logger.info("Preprocess column '{}'".format(col_name))
 
             X_col = self.preprocess_X(X[col_name],
-                                      convert_bool=convert_bool,
-                                      convert_row_percentage=convert_row_percentage,
-                                      normalize_text=normalize_text,
-                                      use_stem=use_stem,
-                                      min_tokens=min_tokens
+                                      convert_bool=self.convert_bool,
+                                      convert_row_percentage=self.convert_row_percentage,
+                                      normalize_text=self.normalize_text,
+                                      use_stem=self.use_stem,
+                                      min_tokens=self.min_tokens
                                       )
             feature_name = col_name
 
-            if standardize is True:
+            if self.standardize is True:
                 # z-score normalize the scale of the feature
-                if self.standard_scaler is None or replace_exists:
-                    with_mean = not is_sparse
+                if self.standard_scaler is None or self.replace_exists:
+                    with_mean = not self.is_sparse
                     # When the data is sparse, do it without mean so that the 0 entry will stay 0.
                     self.standard_scaler = StandardScaler(with_mean=with_mean, with_std=True)
                 self.logger.info("Model: {}".format(self.dictionary))
                 X_values = self.standard_scaler.fit_transform(X_col)
 
-            elif one_hot_encode is True:
+            elif self.one_hot_encode is True:
                 # categorical_features could declare the columns to be one hot encoder. sparse = True/False
-                if self.one_hot_encoder is None or replace_exists:
+                if self.one_hot_encoder is None or self.replace_exists:
                     self.one_hot_encoder = OneHotEncoder(handle_unknown=False)
                 self.logger.info("Model: {}".format(self.one_hot_encoder))
                 # For a single column.
@@ -386,12 +323,12 @@ class Feature_Processing():
                 feature_name = ["{}_{}".format(col_name, fn) for fn in list(self.one_hot_encoder.get_feature_names())]
 
             # TODO: try whether X.ravel() vs. X
-            elif bag_of_word is True:
-                if self.dictionary is None or replace_exists:
+            elif self.bag_of_word is True:
+                if self.dictionary is None or self.replace_exists:
                     # Some times we might want to keep the stop word.
                     self.dictionary = TfidfVectorizer(tokenizer=word_tokenize,
                                                       stop_words='english',
-                                                      max_features=max_token_number)
+                                                      max_features=self.max_token_number)
                 self.logger.info("Model: {}".format(self.dictionary))
                 # For a single column.
                 X_values = self.dictionary.fit_transform(X_col)
@@ -400,13 +337,13 @@ class Feature_Processing():
                 self.logger.info("The vocabulary size is {}".format(len(self.dictionary.vocabulary_)))
                 feature_name = ["{}_{}".format(col_name, fn) for fn in list(self.dictionary.vocabulary_.keys())]
 
-            elif counter_ngram is not None:
-                if self.counter_vector is None or replace_exists:
+            elif self.counter_ngram is not None:
+                if self.counter_vector is None or self.replace_exists:
                     # Some times we might want to keep the stop word.
                     self.counter_vector = CountVectorizer(tokenizer=word_tokenize,
-                                                          ngram_range=(1, max(1, counter_ngram)),
+                                                          ngram_range=(1, max(1, self.counter_ngram)),
                                                           stop_words='english',
-                                                          max_features=max_token_number)
+                                                          max_features=self.max_token_number)
                 self.logger.info("Model: {}".format(self.counter_vector))
                 # For a single column.
                 X_values = self.counter_vector.fit_transform(X_col)
@@ -429,13 +366,13 @@ class Feature_Processing():
                     plt.title('Word Frequency Distribution')
                     plt.show()
 
-            elif embedding is True:
+            elif self.embedding is True:
                 # Setup vocabulary processor
 
-                sentence_size = self.get_text_length_for_embedding(X_col, sentence_size_percentage, show_plot=show_plot)
+                sentence_size = self.get_text_length_for_embedding(X_col, self.sentence_size_percentage, show_plot=show_plot)
 
-                if self.vocab_processor is None or replace_exists:
-                    self.vocab_processor = learn.preprocessing.VocabularyProcessor(sentence_size, min_frequency=min_word_freq)
+                if self.vocab_processor is None or self.replace_exists:
+                    self.vocab_processor = learn.preprocessing.VocabularyProcessor(sentence_size, min_frequency=self.min_word_freq)
                 self.logger.info("Embedding Model: {}".format(self.vocab_processor))
 
                 # Have to fit transform to get length of unique words.
@@ -460,7 +397,7 @@ class Feature_Processing():
             else:
                 feature_names.append(feature_name)
 
-        if is_sparse is True:
+        if self.is_sparse is True:
             # horizontal append. Return a sparse matrix.
             feature_matrix = sparse.hstack(feature_coomatrix_columns)
             self.logger.info("Shape of all feature matrix is {}".format(feature_matrix.shape))
@@ -529,25 +466,11 @@ class Feature_Processing():
                                     embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
                                     replace_exists=False):
 
-        self.load_model_if_exists(
-            in_fname=in_fname,
-            is_sparse=is_sparse,
-            standardize=standardize,
-            one_hot_encode=one_hot_encode,
-            convert_bool=convert_bool,
-            convert_row_percentage=convert_row_percentage,
-            normalize_text=normalize_text,
-            use_stem=use_stem,
-            min_tokens=min_tokens,
-            bag_of_word=bag_of_word,
-            max_token_number=max_token_number,
-            counter_ngram=counter_ngram,
-            embedding=embedding, sentence_size_percentage=sentence_size_percentage,
-            min_word_freq=min_word_freq)
-
-        X, y = self.get_X_y_featurenames_from_file(in_fname,
-                                                   drop_colnames=drop_colnames,
-                                                   label_colname=label_colname)
+        self.load_model_if_exists()
+        date_preprocessing = Data_Preprocessing()
+        X, y = date_preprocessing.get_X_y_featurenames_from_file(in_fname,
+                                                                 label_colnames=[label_colname],
+                                                                 drop_colnames=drop_colnames)
 
         X, feature_names = self.encode_X(X,
                           is_sparse=is_sparse,

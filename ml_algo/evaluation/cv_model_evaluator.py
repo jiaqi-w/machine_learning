@@ -74,6 +74,8 @@ class CV_Model_Evaluator():
 
     def get_evaluation_dict(self, evaluation_fname=None):
         cv_metric_dict = {}
+        if len(self.accuracy_list) == 0:
+            return cv_metric_dict
         cv_metric_dict["cv_accuracy"] = round(np.average(self.accuracy_list), 4)
         cv_metric_dict["cv_roc_auc"] = round(np.average(self.roc_auc_list), 4)
         cv_metric_dict["cv_macro_prec"] = round(np.average(self.macro_precision_list), 4)

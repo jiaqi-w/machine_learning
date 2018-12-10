@@ -1,6 +1,8 @@
 import config
 import os, re
 
+from sklearn.preprocessing import LabelEncoder
+
 from keras.constraints import max_norm
 from keras.layers import Dense
 from keras.layers import Dropout
@@ -148,9 +150,6 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
         https://keras.io/getting-started/functional-api-guide/
         :return:
         '''
-        if self.replace_exists == False and self.model is None:
-            self.logger.error("The self.replace_exists is False. Please make sure you don't want to store/replace the model after training. Please set self.replace_exists to true if you would prefer to replace the old model {}.".format(self.model_name))
-            return
         # Initial the embedding layer. Don't replace the embedding since it could be shared between different models.
         if self.embedding_helper is not None:
             self.embedding_layer = self.embedding_helper.init_embedding_layer(X_text)
@@ -280,9 +279,9 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
             # X_encode = [X_encode, X_feature_test]
             X_encode = {"text_input": X_encode, "feature_input": X_feature_test}
 
-        loss, acc = self.model.evaluate(X_encode, y_test, verbose=0)
-        print('Test Loss: %f' % (loss))
-        print('Test Accuracy: %f' % (acc * 100))
+        # loss, acc = self.model.evaluate(X_encode, y_test, verbose=0)
+        # print('Test Loss: %f' % (loss))
+        # print('Test Accuracy: %f' % (acc * 100))
 
         # y_pred = self.model.predict_classes(X_encode)
         y_pred = np.asarray(self.model.predict(X_encode))
@@ -320,4 +319,59 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
                                                             cm_fname=cm_fname,
                                                             show_cm=False)
 
+        # # if self.feature_preprocessing.label_encoder is None:
+        # #     self.feature_preprocessing.label_encoder = LabelEncoder()
+        # self.feature_preprocessing.label_encoder = LabelEncoder()
+        #
+        # self.logger.info("label inverse_transform")
+        # # TODO: fix me pleassssssse
+        # self.feature_preprocessing.label_encoder.fit(["yes", "no"])
+        # y_pred = pd.DataFrame(self.feature_preprocessing.label_encoder.inverse_transform(y_pred))
+        #
+        # self.logger.info("y_pred {}".format(y_pred))
+
         return fieldnames, evaluate_dict, y_pred
+
+
+
+    def predict_y(self, X_text_pred:pd.Series, X_feature_pred:pd.Series):
+
+        if self.embedding_helper is not None:
+            X_encode = self.embedding_helper.encode_X(X_text_pred)
+        else:
+            X_encode = X_text_pred
+
+        if X_feature_pred is not None and X_feature_pred.shape[1] > 0:
+            # Merge the features
+            X_encode = [X_encode, X_feature_pred]
+
+
+        y_pred = self.model.predict(X_encode)
+        if self.num_class == 1:
+            pred = []
+            for p in y_pred:
+                if p > 0.5:
+                    pred.append(1)
+                else:
+                    pred.append(0)
+            y_pred = pred
+        else:
+            y_pred = y_pred.argmax(axis=-1)
+            y_pred = np.argmax(y_pred, axis=1)
+        self.logger.info("y_pred {}".format(y_pred))
+        # print("self.feature_preprocessing.name", self.feature_preprocessing.data_lable_name)
+        print("label_encoder", self.feature_preprocessing.label_encoder)
+
+
+        # if self.feature_preprocessing.label_encoder is None:
+        #     self.feature_preprocessing.label_encoder = LabelEncoder()
+        self.feature_preprocessing.label_encoder = LabelEncoder()
+
+        self.logger.info("label inverse_transform")
+        # TODO: fix me pleassssssse
+        self.feature_preprocessing.label_encoder.fit(["yes", "no"])
+        y_pred = pd.DataFrame(self.feature_preprocessing.label_encoder.inverse_transform(y_pred))
+
+        self.logger.info("y_pred {}".format(y_pred))
+
+        return y_pred
