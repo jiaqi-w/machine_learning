@@ -103,12 +103,14 @@ class Data_Preprocessing():
                 Pickle_Helper.save_model_to_pickle(self.kfold, self.dump_kfold_fname)
 
     def get_X_y_featurenames_from_dateframe(self, df, feature_columns:list=None,
-                                            label_colnames:list=("label"),
+                                            label_colnames:list=None,
                                             drop_colnames:list=None):
 
         # Get the label.
         # y = df[[label_colname]]
-        y = df[label_colnames]
+        y = None
+        if label_colnames is not None:
+            y = df[label_colnames]
 
         X = None
         if feature_columns is not None:
@@ -124,10 +126,10 @@ class Data_Preprocessing():
 
     def get_X_y_featurenames_from_file(self, filename,
                                        feature_columns:list=None,
-                                       label_colnames:list=("label"),
+                                       label_colnames:list=None,
                                        drop_colnames:list=None):
         self.logger.info("Read file {}".format(filename))
-        df = pd.read_csv(filename)
+        df = pd.read_csv(filename, encoding = 'latin1')
         self.logger.info("columns {}".format(df.columns.values))
         self.logger.info("head {}".format(df.values))
         return self.get_X_y_featurenames_from_dateframe(
@@ -139,7 +141,7 @@ class Data_Preprocessing():
 
     def get_X_y_featurenames_from_pickle(self, filename,
                                          feature_columns:list=None,
-                                         label_colnames:list=("label"),
+                                         label_colnames:list=None,
                                          drop_colnames:list=None):
         df = Pickle_Helper.load_model_from_pickle(pickle_fname=filename)
         return self.get_X_y_featurenames_from_dateframe(

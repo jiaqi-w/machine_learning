@@ -206,12 +206,12 @@ class Logistic_Regression():
 
         features_array, label_array = self.get_features_array_label_array_from_file(test_file)
         # TODO: save the prediction results as well.
-        predict_results = self.model.predict(features_array)
+        predict_results = self.model.run_semi_supervise(features_array)
         self.calculate_metrics(label_array, predict_results)
 
     def predict(self, text):
         features_array, label_array = self.get_features_array_label_array(np.array([text]))
-        predict_results = self.model.predict(features_array)
+        predict_results = self.model.run_semi_supervise(features_array)
         if predict_results is not None and len(predict_results) > 0:
             class_names = self.label_encoder.inverse_transform(predict_results)
             return class_names[0]

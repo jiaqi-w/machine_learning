@@ -31,7 +31,12 @@ __date__ = "Oct 24 2018"
 
 class Feature_Processing():
 
-    def __init__(self, logger=None):
+    def __init__(self,
+                 data_name="data",
+                 feature_name="f1.f2",
+                 target_name="t",
+                 replace_exists=False,
+                 logger=None):
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="preprocessing")
 
         self.stemmer = SnowballStemmer('english')
@@ -44,7 +49,12 @@ class Feature_Processing():
         self.vocab_processor = None
         self.label_encoder = None
 
-        self.model_name = None
+        self.replace_exists = replace_exists
+
+        # TODO: FIX ME in the future...........
+        # self.data_lable_name = "fp_{}_{}_{}".format(data_name, feature_name, target_name)
+        self.data_lable_name = "fp_yes_no".format(data_name, feature_name, target_name)
+        self.load_label_model()
 
     def generate_model_name(self, in_fname,
                             is_sparse=True,
@@ -60,62 +70,101 @@ class Feature_Processing():
                             counter_ngram:int=None,
                             embedding=False, sentence_size_percentage:float=1, min_word_freq=1):
 
-        model_name = "preprocess"
+        self.model_name = self.data_lable_name
         if in_fname is not None:
-            model_name = re.sub(r"\.\w+$", "", basename(in_fname))
+            self.model_name = re.sub(r"\.\w+$", "", basename(in_fname))
 
         if is_sparse:
-            model_name = model_name + "_spr"
+            self.model_name += "_spr"
         if standardize:
-            model_name = model_name + "_std"
+            self.model_name += "_std"
         if convert_bool:
-            model_name = model_name + "_bool"
+            self.model_name += "_bool"
         if convert_row_percentage:
-            model_name = model_name + "_rpct"
+            self.model_name += "_rpct"
         if normalize_text:
-            model_name = model_name + "_ntext"
+            self.model_name += "_ntext"
         if use_stem:
-            model_name = model_name + "_stem"
+            self.model_name += "_stem"
         if min_tokens:
-            model_name = model_name + "_mint{}".format(min_tokens)
+            self.model_name += "_mint{}".format(min_tokens)
         if bag_of_word:
-            model_name = model_name + "_bow"
+            self.model_name += "_bow"
         if max_token_number:
-            model_name = model_name + "_tfidf{}".format(max_token_number)
+            self.model_name += "_tfidf{}".format(max_token_number)
         if counter_ngram is not None:
-            model_name = model_name + "_n{}".format(counter_ngram)
+            self.model_name += "_n{}".format(counter_ngram)
         if embedding:
-            model_name = model_name + "_embd"
+            self.model_name += "_embd"
         if sentence_size_percentage:
-            model_name = model_name + "_senlenth{}".format(round(sentence_size_percentage,2))
+            self.model_name += "_senlenth{}".format(round(sentence_size_percentage,2))
         if min_word_freq:
-            model_name = model_name + "_minfreq{}".format(min_word_freq)
+            self.model_name += "_minfreq{}".format(min_word_freq)
 
-        self.model_name = model_name
-        self.logger.info("model_name={}".format(model_name))
+        self.logger.info("model_name={}".format(self.model_name))
 
 
-    def load_model_if_exists(self,
-                             in_fname,
-                             is_sparse=True,
-                             standardize=False,
-                             one_hot_encode=False,
-                             convert_bool=False,
-                             convert_row_percentage=False,
-                             normalize_text=True,
-                             use_stem=False,
-                             min_tokens:int=None,
-                             bag_of_word=False,
-                             max_token_number:int=None,
-                             counter_ngram:int=None,
-                             embedding=False, sentence_size_percentage:float=1, min_word_freq=1,
-                             dump_model_dir=config.PREROCESS_PICKLES_DIR):
+    def load_label_model(self, dump_model_dir=config.PREROCESS_PICKLES_DIR):
         # Load the file is not already done so. If there is no pickle created, train one for it.
-        self.logger.info("Load Model")
-
         self.dump_model_dir = dump_model_dir
         if not os.path.exists(dump_model_dir):
             os.makedirs(dump_model_dir)
+
+        self.dump_label_encoder_fname = os.path.join(dump_model_dir, "{}_label.pickle".format(self.data_lable_name))
+        self.label_encoder = Pickle_Helper.load_model_from_pickle(self.dump_label_encoder_fname)
+        print("load label", self.dump_label_encoder_fname)
+
+    def load_model_if_exists(self,
+                                   in_fname,
+                                   is_sparse=True,
+                                   standardize=False,
+                                   one_hot_encode=False,
+                                   convert_bool=False,
+                                   convert_row_percentage=False,
+                                   normalize_text=True,
+                                   use_stem=False,
+                                   min_tokens: int = None,
+                                   bag_of_word=False,
+                                   max_token_number: int = None,
+                                   counter_ngram: int = None,
+                                   embedding=False, sentence_size_percentage: float = 1, min_word_freq=1,
+                                   dump_model_dir=config.PREROCESS_PICKLES_DIR):
+
+        # Load the file is not already done so. If there is no pickle created, train one for it.
+        self.dump_model_dir = dump_model_dir
+        if not os.path.exists(dump_model_dir):
+            os.makedirs(dump_model_dir)
+
+        self.generate_model_name(in_fname=in_fname,
+                                 is_sparse=is_sparse,
+                                 standardize=standardize,
+                                 one_hot_encode=one_hot_encode,
+                                 convert_bool=convert_bool,
+                                 convert_row_percentage=convert_row_percentage,
+                                 normalize_text=normalize_text,
+                                 use_stem=use_stem,
+                                 min_tokens=min_tokens,
+                                 bag_of_word=bag_of_word,
+                                 max_token_number=max_token_number,
+                                 counter_ngram=counter_ngram,
+                                 embedding=embedding, sentence_size_percentage=sentence_size_percentage,
+                                 min_word_freq=min_word_freq)
+
+        self.dump_standard_scaler_fname = os.path.join(dump_model_dir,
+                                                       "{}_standard_scaler.pickle".format(self.model_name))
+        self.dump_one_hot_encode_fname = os.path.join(dump_model_dir,
+                                                      "{}_onehot_encoder.pickle".format(self.model_name))
+        self.dump_dictionary_fname = os.path.join(dump_model_dir, "{}_dictionary.pickle".format(self.model_name))
+        self.dump_counter_vec_fname = os.path.join(dump_model_dir, "{}_countvec.pickle".format(self.model_name))
+        self.dump_label_encoder_fname = os.path.join(dump_model_dir, "{}_label.pickle".format(self.model_name))
+        self.dump_vocab_processor_fname = os.path.join(dump_model_dir, "{}_embedding.pickle".format(self.model_name))
+
+        self.standard_scaler = Pickle_Helper.load_model_from_pickle(self.dump_standard_scaler_fname)
+        self.one_hot_encoder = Pickle_Helper.load_model_from_pickle(self.dump_one_hot_encode_fname)
+        self.dictionary = Pickle_Helper.load_model_from_pickle(self.dump_dictionary_fname)
+        self.counter_vector = Pickle_Helper.load_model_from_pickle(self.dump_counter_vec_fname)
+        self.label_encoder = Pickle_Helper.load_model_from_pickle(self.dump_label_encoder_fname)
+        self.vocab_processor = Pickle_Helper.load_model_from_pickle(self.dump_vocab_processor_fname)
 
         self.generate_model_name(in_fname=in_fname,
                                  is_sparse=is_sparse,
@@ -165,6 +214,11 @@ class Feature_Processing():
         if not os.path.exists(self.dump_vocab_processor_fname) or replace_exists is True:
             if self.vocab_processor is not None:
                 Pickle_Helper.save_model_to_pickle(self.vocab_processor, self.dump_vocab_processor_fname)
+
+    def store_lable_model(self, replace_exists=False):
+        if not os.path.exists(self.dump_label_encoder_fname) or replace_exists is True:
+            if self.label_encoder is not None:
+                Pickle_Helper.save_model_to_pickle(self.label_encoder, self.dump_label_encoder_fname)
 
     def get_X_y_featurenames_from_file(self, filename, drop_colnames:list=None, label_colname="label"):
         # TODO: Add Data_Preprocessing for data filtering.
@@ -438,6 +492,7 @@ class Feature_Processing():
                 if is_num is False:
                     if self.label_encoder is None:
                         self.label_encoder = LabelEncoder()
+                        self.store_lable_model(replace_exists=False)
                     y = self.label_encoder.fit_transform(y)
                     # y = self.label_encoder.fit_transform(y.ravel())
 

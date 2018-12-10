@@ -1,6 +1,8 @@
 import config
 import os, re
 from utils.file_logger import File_Logger_Helper
+from utils.pickel_helper import Pickle_Helper
+from sklearn.preprocessing import LabelEncoder
 
 import numpy as np
 from keras.callbacks import TensorBoard
@@ -43,7 +45,11 @@ class Deep_NLP_Abstract_Class(abc.ABC):
                  logger=None):
 
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="NN.log")
-        self.feature_preprocessing = Feature_Processing()
+        self.feature_preprocessing = Feature_Processing(
+            data_name=data_name,
+            feature_name=feature_name,
+            target_name=target_name
+        )
         self.classifier_name = classifier_name
         self.num_words = num_words
         self.max_text_len = max_text_len
@@ -264,3 +270,38 @@ class Deep_NLP_Abstract_Class(abc.ABC):
                                                             show_cm=False)
 
         return fieldnames, evaluate_dict, y_pred
+
+    def predict_y(self, X_text_pred:pd.Series, X_feature_pred:pd.Series):
+
+        if self.embedding_helper is not None:
+            X_encode = self.embedding_helper.encode_X(X_text_pred)
+        else:
+            X_encode = X_text_pred
+
+        if X_feature_pred is not None and X_feature_pred.shape[1] > 0:
+            # Merge the features
+            X_encode = [X_encode, X_feature_pred]
+
+
+        y_pred = self.model.predict_classes(X_encode)
+        # y_pred = self.model.predict(X_test)
+        # y_pred = y_pred.argmax(axis=-1)
+        # label_encoder = Pickle_Helper.load_model_from_pickle(self.feature_preprocessing.dump_label_encoder_fname)
+
+        # print("self.feature_preprocessing.name", self.feature_preprocessing.data_lable_name)
+        print("label_encoder", self.feature_preprocessing.label_encoder)
+
+
+        # if self.feature_preprocessing.label_encoder is None:
+        #     self.feature_preprocessing.label_encoder = LabelEncoder()
+        self.feature_preprocessing.label_encoder = LabelEncoder()
+
+        self.logger.info("label inverse_transform")
+        # TODO: fix me pleassssssse
+        self.feature_preprocessing.label_encoder.fit(["yes", "no"])
+        y_pred = pd.DataFrame(self.feature_preprocessing.label_encoder.inverse_transform(y_pred))
+
+        self.logger.info("y_pred {}".format(y_pred))
+
+        return y_pred
+

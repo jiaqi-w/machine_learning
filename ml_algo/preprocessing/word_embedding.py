@@ -209,6 +209,8 @@ class Word_Embedding():
             self.logger.error("Please initial the embedding by Word_Embedding().init_embedding_layer first")
             return None
 
+        # TODO: fix me, this shouldn't happen!!
+        X = X.where((pd.notnull(X)), '')
         self.logger.info("X.head={}".format(X.head(5)))
         self.logger.info("X.shape={}".format(X.shape))
         self.logger.info("X.values.shape={}".format(X.values.shape))

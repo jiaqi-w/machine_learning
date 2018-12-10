@@ -149,7 +149,7 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
         :return:
         '''
         if self.replace_exists == False and self.model is None:
-            self.logger.error("The self.replace_exists is False. Please make sure you don't want to store/replace the model after training. Please set self.replace_exists to true if you would prefer to replace the old model {}.".format_map(self.model_name))
+            self.logger.error("The self.replace_exists is False. Please make sure you don't want to store/replace the model after training. Please set self.replace_exists to true if you would prefer to replace the old model {}.".format(self.model_name))
             return
         # Initial the embedding layer. Don't replace the embedding since it could be shared between different models.
         if self.embedding_helper is not None:
