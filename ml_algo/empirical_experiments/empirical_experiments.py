@@ -28,6 +28,7 @@ class Empricial_Experiment:
     def __init__(self,
                  setting_file_list,
                  X, y,
+                 multi_class=None,
                  data_name="data",
                  text_feature_name_list=("f1", "f2"),
                  other_feature_name_list=("f1", "f2"),
@@ -44,6 +45,7 @@ class Empricial_Experiment:
         self.X = X
         self.y = y
         self.y = y
+        self.multi_class = multi_class
         self.data_name = data_name
         self.text_feature_name_list = text_feature_name_list
         self.other_feature_name_list = other_feature_name_list
@@ -105,18 +107,32 @@ class Empricial_Experiment:
                             evaluate_csv_writer = None
                             origin_header = None
                             for i, row in enumerate(csv_reader):
-                                self.cv_exp(
-                                    setting=row,
-                                    data_preprocessing=data_preprocessing,
-                                    data_id=self.data_name,
-                                    target=target,
-                                    modelname=modelname,
-                                    replace_exists=replace_exists,
-                                    csv_cv_writer=csv_cv_writer,
-                                    cv_evaluate_file=cv_evaluate_file,
-                                    evaluate_csv_writer=evaluate_csv_writer,
-                                    evaluate_file=evaluate_file
-                                )
+                                if self.multi_class is not None and self.multi_class > 0:
+                                    self.cv_exp_multi(
+                                        setting=row,
+                                        data_preprocessing=data_preprocessing,
+                                        data_id=self.data_name,
+                                        target=target,
+                                        modelname=modelname,
+                                        replace_exists=replace_exists,
+                                        csv_cv_writer=csv_cv_writer,
+                                        cv_evaluate_file=cv_evaluate_file,
+                                        evaluate_csv_writer=evaluate_csv_writer,
+                                        evaluate_file=evaluate_file
+                                    )
+                                else:
+                                    self.cv_exp(
+                                        setting=row,
+                                        data_preprocessing=data_preprocessing,
+                                        data_id=self.data_name,
+                                        target=target,
+                                        modelname=modelname,
+                                        replace_exists=replace_exists,
+                                        csv_cv_writer=csv_cv_writer,
+                                        cv_evaluate_file=cv_evaluate_file,
+                                        evaluate_csv_writer=evaluate_csv_writer,
+                                        evaluate_file=evaluate_file
+                                    )
                                 # self.logger.info("Run setting {}".format(row))
                                 # if origin_header is None:
                                 #     origin_header = row.keys()
@@ -236,16 +252,16 @@ class Empricial_Experiment:
                     # self.predict_df.to_csv(predict_fname)
                     # print("Prediction result saved in {}".format(predict_fname))
 
-    def cv_exp(self, setting, data_preprocessing, data_id, target, modelname, replace_exists,
-               csv_cv_writer, cv_evaluate_file, evaluate_csv_writer, evaluate_file,
-               X_text_pseudo=None, X_feature_pseudo=None, y_pseudo=None):
+
+    def cv_exp_multi(self, setting, data_preprocessing, data_id, target, modelname, replace_exists,
+               csv_cv_writer, cv_evaluate_file, evaluate_csv_writer, evaluate_file):
         self.logger.info("Run setting {}".format(setting))
         origin_header = setting.keys()
 
         cv_model_evaluator = CV_Model_Evaluator()
-        data_preprocessing.init_kfold()
+        data_preprocessing.init_kfold(is_multi_class=True)
         d_id = 0
-        for train_index, test_index in data_preprocessing.kfold.split(self.X, self.y):
+        for train_index, test_index in data_preprocessing.kfold.split(self.X):
             d_id += 1
             data_id = "{}_{}".format(data_preprocessing.model_name, d_id)
             self.logger.info("train_index {}".format(train_index))
@@ -261,74 +277,40 @@ class Empricial_Experiment:
             self.logger.info("X_test.head()={}".format(X_test.head()))
             self.logger.info("X_test.shape()={}".format(X_test.shape))
 
-            X_text_train = None
+            X_text_train, X_text_test = None, None
             if self.text_feature_name_list is not None:
                 X_text_train = X_train[self.text_feature_name_list]
-                if X_text_pseudo is not None:
-                    self.logger.info("X_text_pseudo.shape()={}".format(X_text_pseudo.shape))
-                    X_text_train = X_text_train.append(X_text_pseudo, ignore_index=True)[self.text_feature_name_list]
-                    self.logger.info("X_text_train.reshape()={}".format(X_text_train.shape))
+                # if X_text_pseudo is not None:
+                #     self.logger.info("X_text_pseudo.shape()={}".format(X_text_pseudo.shape))
+                #     X_text_train = X_text_train.append(X_text_pseudo, ignore_index=True)[self.text_feature_name_list]
+                #     self.logger.info("X_text_train.reshape()={}".format(X_text_train.shape))
                 X_text_test = X_test[self.text_feature_name_list]
 
-            X_feature_train = None
+            X_feature_train, X_feature_test = None, None
             if self.other_feature_name_list is not None:
                 X_feature_train = X_train[self.other_feature_name_list]
-                if X_feature_pseudo is not None:
-                    self.logger.info("X_feature_pseudo.shape()={}".format(X_feature_pseudo.shape))
-                    X_feature_train = X_feature_train.append(X_feature_pseudo, ignore_index=True)[self.other_feature_name_list]
-                    self.logger.info("X_feature_train.reshape()={}".format(X_feature_train.shape))
+                # if X_feature_pseudo is not None:
+                #     self.logger.info("X_feature_pseudo.shape()={}".format(X_feature_pseudo.shape))
+                #     X_feature_train = X_feature_train.append(X_feature_pseudo, ignore_index=True)[self.other_feature_name_list]
+                #     self.logger.info("X_feature_train.reshape()={}".format(X_feature_train.shape))
                 X_feature_test = X_test[self.other_feature_name_list]
 
-            y_train = self.y.iloc[train_index][target]
+            y_train = self.y[train_index]
 
-            self.logger.info("y_train.head()={}".format(y_train.head()))
+            self.logger.info("y_train={}".format(y_train))
             self.logger.info("y_train.shape()={}".format(y_train.shape))
-            if y_pseudo is not None:
-                self.logger.info("y_pseudo.shape()={}".format(y_pseudo.shape))
-                y_train = pd.DataFrame(np.append(y_train.values, y_pseudo.values), columns=[target])[target]
-                self.logger.info("semi y_train.shape()={}".format(y_train.shape))
-            y_test = self.y[target].iloc[test_index]
+            # if y_pseudo is not None:
+            #     self.logger.info("y_pseudo.shape()={}".format(y_pseudo.shape))
+            #     y_train = pd.DataFrame(np.append(y_train.values, y_pseudo.values), columns=[target])[target]
+            #     self.logger.info("semi y_train.shape()={}".format(y_train.shape))
+            y_test = self.y[test_index]
 
-            self.logger.info("y_train distribution: \n{}".format(y_train.value_counts()))
-            self.logger.info("y_test distribution: \n{}".format(y_test.value_counts()))
+            # self.logger.info("y_train distribution: \n{}".format(y_train.value_counts()))
+            # self.logger.info("y_test distribution: \n{}".format(y_test.value_counts()))
 
-            fieldnames = None
-            if modelname == "cnn" or modelname == "cnn_semi":
-                self.logger.info("Run CNN")
-                fieldnames, evaluate_dict, y_pred = self.run_cnn(setting, data_id,
-                                                                 X_text_train, y_train,
-                                                                 X_text_test, y_test,
-                                                                 replace_exists)
-
-            elif modelname == "cnn_merge" or modelname == "cnn_merge_semi":
-                self.logger.info("Run CNN Merge")
-                fieldnames, evaluate_dict, y_pred = self.run_cnn_merge(setting, data_id,
-                                                                       X_text_train, X_feature_train,
-                                                                       y_train, X_text_test,
-                                                                       X_feature_test, y_test,
-                                                                       replace_exists)
-
-            elif modelname == "cnn_rnn" or modelname == "cnn_rnn_semi":
-                self.logger.info("Run CNN RNN")
-                fieldnames, evaluate_dict, y_pred = self.run_cnn_rnn(setting, data_id,
-                                                                     X_text_train, y_train,
-                                                                     X_text_test, y_test,
-                                                                     replace_exists)
-
-            elif modelname.startswith("nn") or modelname == "nn_semi":
-                self.logger.info("Run NN")
-                fieldnames, evaluate_dict, y_pred = self.run_nn(setting, data_id,
-                                                                X_text_train, X_feature_train,
-                                                                y_train, X_text_test,
-                                                                X_feature_test, y_test,
-                                                                replace_exists)
-
-            elif modelname == "rnn" or modelname == "rnn_semi":
-                self.logger.info("Run RNN")
-                fieldnames, evaluate_dict, y_pred = self.run_cnn_rnn(setting, data_id,
-                                                                     X_text_train, y_train,
-                                                                     X_text_test, y_test,
-                                                                     replace_exists)
+            fieldnames, evaluate_dict, y_pred = self.run_one_validation(setting, data_id, modelname, replace_exists,
+                                                                        X_text_train, X_feature_train, y_train,
+                                                                        X_text_test, X_feature_test, y_test)
 
             if fieldnames is not None:
 
@@ -366,6 +348,152 @@ class Empricial_Experiment:
         new_row["data_name"] = data_id
         csv_cv_writer.writerow(new_row)
         cv_evaluate_file.flush()
+
+    def cv_exp(self, setting, data_preprocessing, data_id, target, modelname, replace_exists,
+               csv_cv_writer, cv_evaluate_file, evaluate_csv_writer, evaluate_file,
+               X_text_pseudo=None, X_feature_pseudo=None, y_pseudo=None):
+        self.logger.info("Run setting {}".format(setting))
+        origin_header = setting.keys()
+
+        cv_model_evaluator = CV_Model_Evaluator()
+        if self.multi_class is not None and self.multi_class > 0:
+            data_preprocessing.init_kfold(is_multi_class=True)
+        else:
+            data_preprocessing.init_kfold()
+        d_id = 0
+        for train_index, test_index in data_preprocessing.kfold.split(self.X, self.y):
+            d_id += 1
+            data_id = "{}_{}".format(data_preprocessing.model_name, d_id)
+            self.logger.info("train_index {}".format(train_index))
+            self.logger.info("test_index {}".format(test_index))
+
+            train_index = train_index.tolist()
+            test_index = test_index.tolist()
+
+            X_train = self.X.iloc[train_index]
+            X_test = self.X.iloc[test_index]
+            self.logger.info("X_tain.head()={}".format(X_train.head()))
+            self.logger.info("X_tain.shape()={}".format(X_train.shape))
+            self.logger.info("X_test.head()={}".format(X_test.head()))
+            self.logger.info("X_test.shape()={}".format(X_test.shape))
+
+            X_text_train, X_text_test = None, None
+            if self.text_feature_name_list is not None:
+                X_text_train = X_train[self.text_feature_name_list]
+                if X_text_pseudo is not None:
+                    self.logger.info("X_text_pseudo.shape()={}".format(X_text_pseudo.shape))
+                    X_text_train = X_text_train.append(X_text_pseudo, ignore_index=True)[self.text_feature_name_list]
+                    self.logger.info("X_text_train.reshape()={}".format(X_text_train.shape))
+                X_text_test = X_test[self.text_feature_name_list]
+
+            X_feature_train, X_feature_test = None, None
+            if self.other_feature_name_list is not None:
+                X_feature_train = X_train[self.other_feature_name_list]
+                if X_feature_pseudo is not None:
+                    self.logger.info("X_feature_pseudo.shape()={}".format(X_feature_pseudo.shape))
+                    X_feature_train = X_feature_train.append(X_feature_pseudo, ignore_index=True)[self.other_feature_name_list]
+                    self.logger.info("X_feature_train.reshape()={}".format(X_feature_train.shape))
+                X_feature_test = X_test[self.other_feature_name_list]
+
+            y_train = self.y.iloc[train_index][target]
+
+            self.logger.info("y_train.head()={}".format(y_train.head()))
+            self.logger.info("y_train.shape()={}".format(y_train.shape))
+            if y_pseudo is not None:
+                self.logger.info("y_pseudo.shape()={}".format(y_pseudo.shape))
+                y_train = pd.DataFrame(np.append(y_train.values, y_pseudo.values), columns=[target])[target]
+                self.logger.info("semi y_train.shape()={}".format(y_train.shape))
+            y_test = self.y[target].iloc[test_index]
+
+            self.logger.info("y_train distribution: \n{}".format(y_train.value_counts()))
+            self.logger.info("y_test distribution: \n{}".format(y_test.value_counts()))
+
+            fieldnames, evaluate_dict, y_pred = self.run_one_validation(setting, data_id, modelname, replace_exists,
+                                                                        X_text_train, X_feature_train, y_train,
+                                                                        X_text_test, X_feature_test, y_test)
+
+            if fieldnames is not None:
+
+                # predict_df[training.model_name] = y_pred
+                # The original model's name is too long, index is easier to read.
+                # self.predict_df["m{}_predict".format(i)] = y_pred
+                # fieldnames = ["mid"] + csv_reader.fieldnames + fieldnames
+                self.mid += 1
+                cv_model_evaluator.add_evaluation_metric(self.mid, evaluate_dict)
+
+                if evaluate_csv_writer is None:
+                    fieldnames = ["mid"] + list(origin_header) + fieldnames
+                    self.logger.info("fieldnames={}".format(fieldnames))
+                    evaluate_csv_writer = csv.DictWriter(evaluate_file, fieldnames=fieldnames)
+                    evaluate_csv_writer.writeheader()
+                    evaluate_file.flush()
+
+                new_row = {}
+                new_row.update(setting)
+                new_row["mid"] = self.mid
+                new_row["data_name"] = data_id
+                new_row.update(evaluate_dict)
+                evaluate_csv_writer.writerow(new_row)
+                evaluate_file.flush()
+
+        if csv_cv_writer is None:
+            # Save cross validation results.
+            fieldnames = list(origin_header) + cv_model_evaluator.get_evaluation_fieldnames()
+            csv_cv_writer = csv.DictWriter(cv_evaluate_file,
+                                           fieldnames=fieldnames)
+            csv_cv_writer.writeheader()
+
+        new_row = cv_model_evaluator.get_evaluation_dict()
+        new_row.update(setting)
+        new_row["data_name"] = data_id
+        csv_cv_writer.writerow(new_row)
+        cv_evaluate_file.flush()
+
+    def run_one_validation(self, setting, data_id, modelname, replace_exists,
+                           X_text_train, X_feature_train, y_train,
+                           X_text_test, X_feature_test, y_test):
+        self.logger.info("Run setting {}".format(setting))
+
+        fieldnames, evaluate_dict, y_pred = None, None, None
+        if modelname == "cnn" or modelname == "cnn_semi":
+            self.logger.info("Run CNN")
+            fieldnames, evaluate_dict, y_pred = self.run_cnn(setting, data_id,
+                                                             X_text_train, y_train,
+                                                             X_text_test, y_test,
+                                                             replace_exists)
+
+        elif modelname == "cnn_merge" or modelname == "cnn_merge_semi":
+            self.logger.info("Run CNN Merge")
+            fieldnames, evaluate_dict, y_pred = self.run_cnn_merge(setting, data_id,
+                                                                   X_text_train, X_feature_train,
+                                                                   y_train, X_text_test,
+                                                                   X_feature_test, y_test,
+                                                                   replace_exists)
+
+        elif modelname == "cnn_rnn" or modelname == "cnn_rnn_semi":
+            self.logger.info("Run CNN RNN")
+            fieldnames, evaluate_dict, y_pred = self.run_cnn_rnn(setting, data_id,
+                                                                 X_text_train, y_train,
+                                                                 X_text_test, y_test,
+                                                                 replace_exists)
+
+        elif modelname.startswith("nn") or modelname == "nn_semi":
+            self.logger.info("Run NN")
+            fieldnames, evaluate_dict, y_pred = self.run_nn(setting, data_id,
+                                                            X_text_train, X_feature_train,
+                                                            y_train, X_text_test,
+                                                            X_feature_test, y_test,
+                                                            replace_exists)
+
+        elif modelname == "rnn" or modelname == "rnn_semi":
+            self.logger.info("Run RNN")
+            fieldnames, evaluate_dict, y_pred = self.run_cnn_rnn(setting, data_id,
+                                                                 X_text_train, y_train,
+                                                                 X_text_test, y_test,
+                                                                 replace_exists)
+
+        return fieldnames, evaluate_dict, y_pred
+
 
 
     def define_cnn(self, setting, data_id, replace_exists):
@@ -512,8 +640,10 @@ class Empricial_Experiment:
                       X_text_test, X_feature_test, y_test, replace_exists):
 
         model = self.define_cnn_merge(setting, data_id, replace_exists)
+        if self.multi_class is not None and self.multi_class > 0:
+            model.num_class = self.multi_class
         model.train(X_text_train, y_train, X_feature_train)
-        print("y_test distribution", y_test.value_counts())
+        # print("y_test distribution", y_test.value_counts())
 
         fieldnames, evaluate_dict, y_pred = model.evaluate_model(X_text_test, y_test, X_feature_test,
                                 output_evaluate_dir=None)
@@ -627,7 +757,7 @@ class Empricial_Experiment:
 
     def run_semi_supervise(self,
                            X_text_unlabled:pd.Series, X_feature_unlabled:pd.Series, pseudo_label_dir, pseudo_label_name,
-                           X_text_test:pd.Series, X_feature_test:pd.Series, predict_dir, predict_name
+                           X_text_test:pd.Series, X_feature_test:pd.Series, predict_dir, predict_name, should_train=False
                            ):
 
         feature_name = ".".join(self.feature_name)
@@ -681,68 +811,65 @@ class Empricial_Experiment:
                                     for j in range(self.num_crossvalidation):
                                         # MUST MUST notice that the replace is False since we don't want to replace the best model!!
                                         # use the best macro f1 model
-                                        setting = setting_dict[row["best_macro_f1_mid"]]
-                                        self.logger.info("Best macro_f1 {} model setting {}".format(row["best_macro_f1"],
-                                                                                                    setting))
-                                        model = self.get_model(setting["classifier_name"],
-                                                               setting,
-                                                               setting["data_name"],
-                                                               replace_exists=False)
+                                        if "best_macro_f1_mid" in row and row["best_macro_f1_mid"] in setting_dict:
+                                            setting = setting_dict[row["best_macro_f1_mid"]]
+                                            if setting is not None:
+                                                self.logger.info("Best macro_f1 {} model setting {}".format(row["best_macro_f1"],
+                                                                                                            setting))
+                                                model = self.get_model(setting["classifier_name"],
+                                                                       setting,
+                                                                       setting["data_name"],
+                                                                       replace_exists=False)
 
-                                        self.logger.info("Best model {}".format(model.model_name))
-                                        y_pseudo = model.predict_y(X_text_pred=X_text_unlabled,
-                                                                 X_feature_pred=X_feature_unlabled
-                                                                 )
-                                        output_fname = os.path.join(pseudo_label_dir, "{}_{}_{}_pseudo_lable.csv".format(target, pseudo_label_name, model.model_name))
-                                        self.logger.info("y_pseudo {}".format(np.unique(y_pseudo, return_counts=True)))
-                                        df = pd.DataFrame(data=y_pseudo)
-                                        df.to_csv(output_fname)
-                                        self.logger.info("Output result to {}".format(output_fname))
+                                                self.logger.info("Best model {}".format(model.model_name))
+                                                y_pseudo = model.predict_y(X_text_pred=X_text_unlabled,
+                                                                         X_feature_pred=X_feature_unlabled
+                                                                         )
+                                                output_fname = os.path.join(pseudo_label_dir, "{}_{}_{}_pseudo_lable.csv".format(target, pseudo_label_name, model.model_name))
+                                                self.logger.info("y_pseudo {}".format(np.unique(y_pseudo, return_counts=True)))
+                                                df = pd.DataFrame(data=y_pseudo)
+                                                df.to_csv(output_fname)
+                                                self.logger.info("Output result to {}".format(output_fname))
 
-                                        row["classifier_name"] = "{}_semi".format(row["classifier_name"])
+                                                if should_train:
+                                                    row["classifier_name"] = "{}_semi".format(row["classifier_name"])
 
-                                        # run corss validation experiment on new model
-                                        self.cv_exp(
-                                            setting=row,
-                                            data_preprocessing=data_preprocessing,
-                                            data_id=self.data_name,
-                                            target=target,
-                                            modelname=row["classifier_name"],
-                                            replace_exists=False,
-                                            csv_cv_writer=new_csv_cv_writer,
-                                            cv_evaluate_file=new_cv_evaluate_file,
-                                            evaluate_csv_writer=new_evaluate_csv_writer,
-                                            evaluate_file=new_evaluate_file,
-                                            X_text_pseudo=X_text_unlabled,
-                                            X_feature_pseudo=X_feature_unlabled,
-                                            y_pseudo=y_pseudo
-                                )
+                                                    # run corss validation experiment on new model
 
-                # with open(new_cv_evaluate_fname, 'r') as new_cv_evaluate_file:
-                #     csv_reader = csv.DictReader(new_cv_evaluate_file)
-                #     for row in csv_reader:
-                #         for j in range(self.num_crossvalidation):
-                #             # MUST MUST notice that the replace is False since we don't want to replace the best model!!
-                #             model = self.get_model(row["classifier_name"], row, row["data_name"], replace_exists=False)
-                #
-                #             self.logger.info("Best model {}".format(model.model_name))
-                #             y_pred = model.predict_y(X_text_pred=X_text_test,
-                #                                      X_feature_pred=X_feature_test
-                #                                      )
-                #             output_fname = os.path.join(predict_dir,
-                #                                         "{}_{}.csv".format(predict_name, model.model_name))
-                #             df = pd.DataFrame()
-                #             df = df.add(X_text_unlabled)
-                #             df = df.add(X_feature_unlabled)
-                #             df = df.add(pd.DataFrame(y_pred, columns=["predict_{}".format(target)]))
-                #             df.to_csv(output_fname)
-                #             self.logger.info("Output result to {}".format(output_fname))
+                                                    self.cv_exp(
+                                                        setting=row,
+                                                        data_preprocessing=data_preprocessing,
+                                                        data_id=self.data_name,
+                                                        target=target,
+                                                        modelname=row["classifier_name"],
+                                                        replace_exists=False,
+                                                        csv_cv_writer=new_csv_cv_writer,
+                                                        cv_evaluate_file=new_cv_evaluate_file,
+                                                        evaluate_csv_writer=new_evaluate_csv_writer,
+                                                        evaluate_file=new_evaluate_file,
+                                                        X_text_pseudo=X_text_unlabled,
+                                                        X_feature_pseudo=X_feature_unlabled,
+                                                        y_pseudo=y_pseudo
+                                                    )
 
+    def predict_by_setting(self, target, setting, X_text_pred, X_feature_pred, predict_dir):
+        if setting is not None:
+            model = self.get_model(setting["classifier_name"],
+                                   setting,
+                                   setting["data_name"],
+                                   replace_exists=False)
 
-
-
-
-
+            self.logger.info("Get {} model {}".format(setting["classifier_name"], model.model_name))
+            y_predict = model.predict_y(X_text_pred=X_text_pred,
+                                       X_feature_pred=X_feature_pred
+                                       )
+            output_fname = os.path.join(predict_dir,
+                                        "{}_{}_predict.csv".format(target, model.model_name))
+            self.logger.info("y_pseudo {}".format(np.unique(y_predict, return_counts=True)))
+            df = pd.DataFrame(data=y_predict)
+            # df.index.name = "Test_Instance"
+            df.to_csv(output_fname)
+            self.logger.info("Output result to {}".format(output_fname))
 
 
 

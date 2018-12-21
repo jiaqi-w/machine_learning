@@ -169,20 +169,24 @@ class Data_Preprocessing():
         self.logger.info("y_test distribution \n{}".format(self.y_test.value_counts()))
         return self.X_train, self.X_test, self.y_train, self.y_test
 
-    def init_kfold(self):
+    def init_kfold(self, is_multi_class=False):
         # if self.kfold is None or self.replace_exists:
             # random_state=None, shuffle=False
             # self.kfold = KFold(n_splits=n_splits)
             # use random_state to regenerate the same splits.
-        self.logger.info("Initial kStratifiedKFold {} nsplit {} random state".format(self.num_crossvalidation,
-                                                                                     self.random_state))
-        self.kfold = StratifiedKFold(n_splits=self.num_crossvalidation, random_state=self.random_state)
+        self.logger.info("Initial kStratifiedKFold {} nsplit {} random state".format(self.num_crossvalidation, self.random_state))
+        if is_multi_class is True:
+            self.kfold = KFold(n_splits=self.num_crossvalidation)
+        else:
+            self.kfold = StratifiedKFold(n_splits=self.num_crossvalidation, random_state=self.random_state)
 
         # for train_index, test_index in self.kfold.split(X, y):
         #     print("TRAIN:", train_index, "TEST:", test_index)
         #     # We don't store the data here, since it's redundant to save so many files.
         #     X_train, X_test = X[train_index], X[test_index]
         #     y_train, y_test = y[train_index], y[test_index]
+
+
 
 
 

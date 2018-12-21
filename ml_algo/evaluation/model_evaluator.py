@@ -20,19 +20,23 @@ __date__ = "Nov 9 2018"
 
 class Model_Evaluator():
     
-    def __init__(self, y_gold:list, y_pred:list, X_gold:pd.Series=None, logger=None):
+    def __init__(self, y_gold:list, y_pred:list, X_gold:pd.Series=None, is_multi_class=False, logger=None):
         # Please note that the list of gold and predict should have the original label when they pass in.
         self.X_gold = X_gold
         self.y_gold = y_gold
         self.y_pred = y_pred
-        self.class_names = list(set(self.y_gold + self.y_pred))
+        self.is_multi_class = is_multi_class
+        if is_multi_class is True:
+            self.class_names = list(range(self.y_gold.shape[1]))
+        else:
+            self.class_names = list(set(self.y_gold + self.y_pred))
         self.logger = logger or File_Logger_Helper.get_logger(logger_fname="evaluate.log")
 
     def get_evaluation_fieldnames(self, with_cm=True):
         fieldnames = []
         for class_name in self.class_names:
             # evaluation metric header
-            fieldnames += ["{}_prec".format(class_name), "{}_recall".format(class_name), "{}_f1".format(class_name)]
+            fieldnames += ["{}_prec".format(class_name), "{}_recall".format(class_name), "{}_f1".format(class_name), "{}_support".format(class_name)]
         fieldnames += ['accuracy', 'roc_auc',
                        'macro_prec', 'macro_recall', 'macro_f1',
                        'micro_prec', 'micro_recall', 'micro_f1',
@@ -47,7 +51,8 @@ class Model_Evaluator():
     def get_evaluation_dict(self, evaluation_fname=None, predict_fname=None, cm_fname=None, show_cm=False):
         evaluation_dict = {}
         evaluation_dict.update(self.get_evaluation_metric(evaluation_fname=evaluation_fname, predict_fname=predict_fname))
-        evaluation_dict.update(self.get_confusion_matrix(cm_fname=cm_fname, show_plot=show_cm))
+        if self.is_multi_class is not True:
+            evaluation_dict.update(self.get_confusion_matrix(cm_fname=cm_fname, show_plot=show_cm))
         return evaluation_dict
 
 
@@ -57,9 +62,12 @@ class Model_Evaluator():
         # TODO: save the evaluation results in the future.
         metric_dict = {}
 
+        print("self.y_gold", self.y_gold)
+        print("self.y_pred", self.y_pred)
+
         # Compute Area Under the Curve (AUC) using the trapezoidal rule
-        fpr, tpr, thresholds = metrics.roc_curve(self.y_gold, self.y_pred, pos_label=2)
-        print("auc", metrics.auc(fpr, tpr))
+        # fpr, tpr, thresholds = metrics.roc_curve(self.y_gold, self.y_pred, pos_label=2)
+        # print("auc", metrics.auc(fpr, tpr))
 
         # default average='macro'
         roc_auc = roc_auc_score(self.y_gold, self.y_pred)
@@ -93,13 +101,27 @@ class Model_Evaluator():
                                                                          round(F1, 4), support))
 
         # For specific class names.
-        precision = metrics.precision_score(self.y_gold, self.y_pred, labels=self.class_names, average=None)
-        recall = metrics.recall_score(self.y_gold, self.y_pred, average=None)
-        F1 = metrics.f1_score(self.y_gold, self.y_pred, average=None)
-        for i, class_name in enumerate(self.class_names):
-            metric_dict["{}_prec".format(class_name)] = round(precision[i], 4)
-            metric_dict["{}_recall".format(class_name)] = round(recall[i], 4)
-            metric_dict["{}_f1".format(class_name)] = round(F1[i], 4)
+        print("self.class_names", self.class_names)
+        if self.is_multi_class is True:
+            for i in self.class_names:
+                precision, recall, F1, support = precision_recall_fscore_support(self.y_gold[:, i], self.y_pred[:, i],
+                                                                                 average='macro')
+                metric_dict["{}_prec".format(i)] = round(precision, 4)
+                metric_dict["{}_recall".format(i)] = round(recall, 4)
+                metric_dict["{}_f1".format(i)] = round(F1, 4)
+                metric_dict["{}_support".format(i)] = support
+                self.logger.info(
+                    "class_name={}, macro precision={}, recall={}, f1={}, support={}".format(i, round(precision, 4), round(recall, 4),
+                                                                              round(F1, 4), support))
+        else:
+            precision = metrics.precision_score(self.y_gold, self.y_pred, labels=self.class_names, average=None)
+            recall = metrics.recall_score(self.y_gold, self.y_pred, average=None)
+            F1 = metrics.f1_score(self.y_gold, self.y_pred, average=None)
+            for i, class_name in enumerate(self.class_names):
+                print("class_name", class_name)
+                metric_dict["{}_prec".format(class_name)] = round(precision[i], 4)
+                metric_dict["{}_recall".format(class_name)] = round(recall[i], 4)
+                metric_dict["{}_f1".format(class_name)] = round(F1[i], 4)
 
         report = classification_report(self.y_gold, self.y_pred)
         self.logger.info("report:\n{}".format(report))

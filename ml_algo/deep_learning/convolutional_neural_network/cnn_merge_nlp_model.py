@@ -172,7 +172,8 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
         else:
             X_train = X_text
 
-        y_train = self.feature_preprocessing.encode_y(y_train)
+        if y_train.shape[1] == 1:
+            y_train = self.feature_preprocessing.encode_y(y_train)
 
         if self.model == None:
             input_layers = []
@@ -296,15 +297,25 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
                     pred.append(0)
             y_pred = pred
         else:
-            y_pred = y_pred.argmax(axis=-1)
-            y_pred = np.argmax(y_pred, axis=1)
+            # y_pred = y_pred.argmax(axis=-1)
+            # y_pred = np.argmax(y_pred, axis=1)
+            y_convert = np.zeros_like(y_pred)
+            y_convert[np.arange(len(y_pred)), y_pred.argmax(axis=1)] = 1
+            print("convert y {}".format(y_convert))
+            y_pred = y_convert
         self.logger.info("y_pred {}".format(y_pred))
+        self.logger.info("y_pred.shape {}".format(y_pred.shape))
 
-        y_test = self.feature_preprocessing.encode_y(y_test)
+        if y_test.shape[1] == 1:
+            y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
+        self.logger.info("y_test.shape {}".format(y_test.shape))
 
         # model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=list(y_pred.flatten().tolist()), X_gold=X_text_test)
-        model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=y_pred, X_gold=X_text_test)
+        if self.num_class == 1:
+            model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=y_pred, X_gold=X_text_test)
+        else:
+            model_evaluator = Model_Evaluator(y_gold=y_test, y_pred=y_pred, X_gold=X_text_test, is_multi_class=True)
 
         fieldnames = model_evaluator.get_evaluation_fieldnames()
 
@@ -343,10 +354,12 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
 
         if X_feature_pred is not None and X_feature_pred.shape[1] > 0:
             # Merge the features
-            X_encode = [X_encode, X_feature_pred]
+            X_encode =  {"text_input": X_encode, "feature_input": X_feature_pred}
 
 
         y_pred = self.model.predict(X_encode)
+
+        print("self.num_class", self.num_class)
         if self.num_class == 1:
             pred = []
             for p in y_pred:
@@ -356,22 +369,27 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
                     pred.append(0)
             y_pred = pred
         else:
-            y_pred = y_pred.argmax(axis=-1)
-            y_pred = np.argmax(y_pred, axis=1)
+            # y_pred = y_pred.argmax(axis=-1)
+            # y_pred = np.argmax(y_pred, axis=1)
+            y_convert = np.zeros_like(y_pred)
+            y_convert[np.arange(len(y_pred)), y_pred.argmax(axis=1)] = 1
+            print("convert y {}".format(y_convert))
+            y_pred = y_convert
         self.logger.info("y_pred {}".format(y_pred))
         # print("self.feature_preprocessing.name", self.feature_preprocessing.data_lable_name)
         print("label_encoder", self.feature_preprocessing.label_encoder)
 
+        if self.num_class == 1:
 
-        # if self.feature_preprocessing.label_encoder is None:
-        #     self.feature_preprocessing.label_encoder = LabelEncoder()
-        self.feature_preprocessing.label_encoder = LabelEncoder()
+            # if self.feature_preprocessing.label_encoder is None:
+            #     self.feature_preprocessing.label_encoder = LabelEncoder()
+            self.feature_preprocessing.label_encoder = LabelEncoder()
 
-        self.logger.info("label inverse_transform")
-        # TODO: fix me pleassssssse
-        self.feature_preprocessing.label_encoder.fit(["yes", "no"])
-        y_pred = pd.DataFrame(self.feature_preprocessing.label_encoder.inverse_transform(y_pred))
+            self.logger.info("label inverse_transform")
+            # TODO: fix me pleassssssse
+            self.feature_preprocessing.label_encoder.fit(["yes", "no"])
+            y_pred = pd.DataFrame(self.feature_preprocessing.label_encoder.inverse_transform(y_pred))
 
-        self.logger.info("y_pred {}".format(y_pred))
+            self.logger.info("y_pred {}".format(y_pred))
 
         return y_pred
