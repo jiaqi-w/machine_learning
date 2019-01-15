@@ -167,7 +167,7 @@ class Deep_NLP_Abstract_Class(abc.ABC):
         adam = Adam(lr=self.model_learning_rate, decay=self.model_weight_decate_rate)
         if self.num_class == 1:
             # for the imbalanced data. kernel_initializer='uniform',
-            # samples are drawn from a uniform distribution within [-limit, limit], with limit = sqrt(3 * scale / n)
+            # samples are drawn from a uniform distribution.csv within [-limit, limit], with limit = sqrt(3 * scale / n)
             # self.model.add(Dense(self.num_class, activation='softmax', kernel_initializer='uniform'))
             # "sigmoid", ""logistic function
             # And add a logistic regression on top.

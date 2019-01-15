@@ -192,7 +192,7 @@ class Feature_Processing():
 
     def get_text_length_for_embedding(self, X_col, text_length_percentage:float=1, show_plot=False):
         # TODO: We might want to have varying sentence lenghth in the future.
-        self.logger.info("Observe data distribution.")
+        self.logger.info("Observe data distribution.csv.")
         text_length = pd.DataFrame({'length': X_col.apply(lambda x: len(x.split()))})
         self.logger.info("max={}".format(text_length["length"].values.max()))
         self.logger.info("min={}".format(text_length["length"].values.min()))
@@ -417,7 +417,7 @@ class Feature_Processing():
         if y is not None:
             if len(y) > 0:
                 unique, counts = np.unique(y, return_counts=True)
-                self.logger.info("distribution of y:\n{}".format(counts))
+                self.logger.info("distribution.csv of y:\n{}".format(counts))
 
                 y = self.preprocess_y(y)
                 # Check whether the label is number

@@ -165,8 +165,8 @@ class Data_Preprocessing():
         if self.X_train is None or replace_exists:
             self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(X, y, test_size=test_size)
             self.store_data(replace_exists=replace_exists)
-        self.logger.info("y_train distribution \n{}".format(self.y_train.value_counts()))
-        self.logger.info("y_test distribution \n{}".format(self.y_test.value_counts()))
+        self.logger.info("y_train distribution.csv \n{}".format(self.y_train.value_counts()))
+        self.logger.info("y_test distribution.csv \n{}".format(self.y_test.value_counts()))
         return self.X_train, self.X_test, self.y_train, self.y_test
 
     def init_kfold(self, is_multi_class=False):

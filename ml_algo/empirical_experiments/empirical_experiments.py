@@ -169,8 +169,8 @@ class Empricial_Experiment:
                                 #     y_train = self.y[target].iloc[train_index]
                                 #     y_test = self.y[target].iloc[test_index]
                                 #
-                                #     self.logger.info("y_train distribution: \n{}".format(y_train.value_counts()))
-                                #     self.logger.info("y_test distribution: \n{}".format(y_test.value_counts()))
+                                #     self.logger.info("y_train distribution.csv: \n{}".format(y_train.value_counts()))
+                                #     self.logger.info("y_test distribution.csv: \n{}".format(y_test.value_counts()))
                                 #
                                 #     fieldnames = None
                                 #     if modelname == "cnn":
@@ -305,8 +305,8 @@ class Empricial_Experiment:
             #     self.logger.info("semi y_train.shape()={}".format(y_train.shape))
             y_test = self.y[test_index]
 
-            # self.logger.info("y_train distribution: \n{}".format(y_train.value_counts()))
-            # self.logger.info("y_test distribution: \n{}".format(y_test.value_counts()))
+            # self.logger.info("y_train distribution.csv: \n{}".format(y_train.value_counts()))
+            # self.logger.info("y_test distribution.csv: \n{}".format(y_test.value_counts()))
 
             fieldnames, evaluate_dict, y_pred = self.run_one_validation(setting, data_id, modelname, replace_exists,
                                                                         X_text_train, X_feature_train, y_train,
@@ -405,8 +405,8 @@ class Empricial_Experiment:
                 self.logger.info("semi y_train.shape()={}".format(y_train.shape))
             y_test = self.y[target].iloc[test_index]
 
-            self.logger.info("y_train distribution: \n{}".format(y_train.value_counts()))
-            self.logger.info("y_test distribution: \n{}".format(y_test.value_counts()))
+            self.logger.info("y_train distribution.csv: \n{}".format(y_train.value_counts()))
+            self.logger.info("y_test distribution.csv: \n{}".format(y_test.value_counts()))
 
             fieldnames, evaluate_dict, y_pred = self.run_one_validation(setting, data_id, modelname, replace_exists,
                                                                         X_text_train, X_feature_train, y_train,
@@ -543,7 +543,7 @@ class Empricial_Experiment:
         model = self.define_cnn(setting, data_id, replace_exists)
         # print("X_text_train.shape", X_text_train.shape)
         model.train(X_text_train, y_train)
-        print("y_test distribution", y_test.value_counts())
+        print("y_test distribution.csv", y_test.value_counts())
 
         fieldnames, evaluate_dict, y_pred = model.evaluate_model(X_text_test, y_test, output_evaluate_dir=None)
         return fieldnames, evaluate_dict, y_pred
@@ -591,7 +591,7 @@ class Empricial_Experiment:
 
         model = self.define_cnn_rnn(setting, data_id, replace_exists)
         model.train(X_text_train, y_train)
-        print("y_test distribution", y_test.value_counts())
+        print("y_test distribution.csv", y_test.value_counts())
         fieldnames, evaluate_dict, y_pred = model.evaluate_model(X_text_test, y_test, output_evaluate_dir=None)
         return fieldnames, evaluate_dict, y_pred
 
@@ -643,7 +643,7 @@ class Empricial_Experiment:
         if self.multi_class is not None and self.multi_class > 0:
             model.num_class = self.multi_class
         model.train(X_text_train, y_train, X_feature_train)
-        # print("y_test distribution", y_test.value_counts())
+        # print("y_test distribution.csv", y_test.value_counts())
 
         fieldnames, evaluate_dict, y_pred = model.evaluate_model(X_text_test, y_test, X_feature_test,
                                 output_evaluate_dir=None)
@@ -680,7 +680,7 @@ class Empricial_Experiment:
 
         model = self.define_nn(setting, data_id, replace_exists)
         model.train(X_feature_train, y_train)
-        print("y_test distribution", y_test.value_counts())
+        print("y_test distribution.csv", y_test.value_counts())
 
         fieldnames, evaluate_dict, y_pred = model.evaluate_model(X_feature_test, y_test, output_evaluate_dir=None)
         return fieldnames, evaluate_dict, y_pred
@@ -725,7 +725,7 @@ class Empricial_Experiment:
     def run_rnn(self, setting, data_id, X_train, y_train, X_test, y_test, replace_exists):
         model = self.define_rnn(setting, data_id, replace_exists)
         model.train(X_train, y_train)
-        print("y_test distribution", y_test.value_counts())
+        print("y_test distribution.csv", y_test.value_counts())
         fieldnames, evaluate_dict, y_pred = model.evaluate_model(X_test, y_test)
 
         return fieldnames, evaluate_dict, y_pred

@@ -59,7 +59,7 @@ class CV_Model_Evaluator():
 
     def add_evaluation_metric(self, mid, metric_dict):
         self.mid_list.append(mid)
-        self.roc_auc_list.append(metric_dict["roc_auc"])
+        # self.roc_auc_list.append(metric_dict["roc_auc"])
         self.accuracy_list.append(metric_dict["accuracy"])
 
         self.micro_precision_list.append(metric_dict["micro_prec"])
@@ -87,8 +87,8 @@ class CV_Model_Evaluator():
         cv_metric_dict["cv_weighted_prec"] = round(np.average(self.weighted_precision_list), 4)
         cv_metric_dict["cv_weighted_recall"] = round(np.average(self.weighted_recall_list), 4)
         cv_metric_dict["cv_weighted_f1"] = round(np.average(self.weighted_f1_list), 4)
-        cv_metric_dict["best_roc_auc"] = np.max(self.roc_auc_list)
-        cv_metric_dict["best_roc_auc_mid"] = self.mid_list[np.argmax(self.roc_auc_list)]
+        # cv_metric_dict["best_roc_auc"] = np.max(self.roc_auc_list)
+        # cv_metric_dict["best_roc_auc_mid"] = self.mid_list[np.argmax(self.roc_auc_list)]
         cv_metric_dict["best_accuracy"] = np.max(self.accuracy_list)
         cv_metric_dict["best_accuracy_mid"] = self.mid_list[np.argmax(self.accuracy_list)]
         cv_metric_dict["best_macro_f1"] = np.max(self.macro_f1_list)

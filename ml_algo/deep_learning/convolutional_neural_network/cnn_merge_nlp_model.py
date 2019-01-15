@@ -163,6 +163,9 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
             self.logger.info("X_features shape {}".format(X_features.shape))
             self.logger.info("X_features type {}".format(type(X_features)))
 
+            # TODO: deal with missing value.
+            X_features = X_features.fillna(0)
+
             # X_text = np.reshape(X_text, (X_text.shape[0], X_text.shape[1], 1))
             # X_features = np.reshape(X_features, (X_features.shape[0], X_features.shape[1], 1))
             # X_train = [X_text, X_features]
@@ -172,7 +175,10 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
         else:
             X_train = X_text
 
-        if y_train.shape[1] == 1:
+        print("y_train",y_train)
+        print("y_train.shape",y_train.shape)
+        # if len(y_train.shape) > 1 and y_train.shape[1] == 1 or isinstance(y_train[0], str):
+        if len(y_train.shape) <= 1 or y_train.shape[1] == 1:
             y_train = self.feature_preprocessing.encode_y(y_train)
 
         if self.model == None:
@@ -225,7 +231,7 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
             # adam = Adam(lr=self.model_learning_rate, decay=self.model_weight_decate_rate)
             if self.num_class == 1:
                 # for the imbalanced data. kernel_initializer='uniform',
-                # samples are drawn from a uniform distribution within [-limit, limit], with limit = sqrt(3 * scale / n)
+                # samples are drawn from a uniform distribution.csv within [-limit, limit], with limit = sqrt(3 * scale / n)
                 # self.model.add(Dense(self.num_class, activation='softmax', kernel_initializer='uniform'))
                 # "sigmoid", ""logistic function
                 # And add a logistic regression on top.
@@ -245,7 +251,8 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
             # Log to tensorboard
             tensorBoardCallback = TensorBoard(log_dir=config.LOG_DIR, write_graph=True)
 
-            self.logger.info("X_train={}".format(X_text))
+            # self.logger.info("X_train={}".format(X_text))
+            self.logger.info("X_train={}".format(X_train))
             self.logger.info("y_train={}".format(y_train))
             # batch_size https://keras.io/getting-started/sequential-model-guide/
             if self.model_weight_imbalance_class:
@@ -304,12 +311,12 @@ class CNN_Merge_NLP_Model(Deep_NLP_Abstract_Class):
             print("convert y {}".format(y_convert))
             y_pred = y_convert
         self.logger.info("y_pred {}".format(y_pred))
-        self.logger.info("y_pred.shape {}".format(y_pred.shape))
+        # self.logger.info("y_pred.shape {}".format(y_pred.shape))
 
-        if y_test.shape[1] == 1:
+        if len(y_test.shape) <= 1 or y_test.shape[1] == 1:
             y_test = self.feature_preprocessing.encode_y(y_test)
         self.logger.info("y_test {}".format(y_test))
-        self.logger.info("y_test.shape {}".format(y_test.shape))
+        # self.logger.info("y_test.shape {}".format(y_test.shape))
 
         # model_evaluator = Model_Evaluator(y_gold=list(y_test.flatten().tolist()), y_pred=list(y_pred.flatten().tolist()), X_gold=X_text_test)
         if self.num_class == 1:

@@ -70,9 +70,9 @@ class Model_Evaluator():
         # print("auc", metrics.auc(fpr, tpr))
 
         # default average='macro'
-        roc_auc = roc_auc_score(self.y_gold, self.y_pred)
-        metric_dict["roc_auc"] = round(roc_auc, 4)
-        self.logger.info("roc_auc={}".format(round(roc_auc, 4)))
+        # roc_auc = roc_auc_score(self.y_gold, self.y_pred)
+        # metric_dict["roc_auc"] = round(roc_auc, 4)
+        # self.logger.info("roc_auc={}".format(round(roc_auc, 4)))
 
         accuracy = accuracy_score(self.y_gold, self.y_pred)
         metric_dict["accuracy"] = round(accuracy, 4)

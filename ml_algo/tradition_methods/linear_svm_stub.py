@@ -9,9 +9,9 @@ from sklearn.metrics import mean_squared_error
 
 __author__ = "Jiaqi"
 __version__ = "1"
-__date__ = "Sept 14 2018"
+__date__ = "Jan 12 2019"
 
-class Lasso_Regression():
+class SVM():
     
     def __init__(self, train_file=None, model_name="gen", test_size=None, cv=10, normalize=False, is_bool_value=False, is_percentage=False):
         self.classifier_name = "linear_regression"
